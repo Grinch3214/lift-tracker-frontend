@@ -1,38 +1,60 @@
 <template>
-  <div class="workout-page">
+  <div ref="pageEl" class="workout-page">
     <WorkoutRestTimer />
 
-    <WorkoutEmptyState v-if="exercises.length === 0" />
+    <Transition :name="transitionName" mode="out-in">
+      <div :key="currentDate" class="workout-content">
+        <WorkoutEmptyState v-if="exercises.length === 0" />
 
-    <template v-else>
-      <WorkoutExerciseCard
-        v-for="we in exercises"
-        :key="we.id"
-        :exercise="getExercise(we.exerciseId)"
-        :workout-exercise="we"
-        @add-set="openAddSet(we)"
-        @edit-set="(set: SetEntry) => openEditSet(we, set)"
-        @delete-set="(setId: string) => removeSet(we.id, setId)"
-        @delete-exercise="removeExercise(we.id)"
-      />
+        <template v-else>
+          <WorkoutExerciseCard
+            v-for="we in exercises"
+            :key="we.id"
+            :exercise="getExercise(we.exerciseId)"
+            :workout-exercise="we"
+            @add-set="openAddSet(we)"
+            @edit-set="(set: SetEntry) => openEditSet(we, set)"
+            @delete-set="(setId: string) => removeSet(we.id, setId)"
+            @delete-exercise="removeExercise(we.id)"
+          />
 
-      <div class="workout-summary">{{ summaryText }}</div>
-    </template>
+          <div class="workout-summary">{{ summaryText }}</div>
+        </template>
+      </div>
+    </Transition>
   </div>
 </template>
 
 <script setup lang="ts">
 import { showConfirmDialog } from 'vant';
+import { useSwipe } from '@vueuse/core';
 import type { SetEntry, WorkoutExercise } from '~~/types';
 import { useWorkoutStore } from '@/stores/workout';
 import { useUiStore } from '@/stores/ui';
 import { getExerciseById } from '@/utils/exercises';
-import { formatDate } from '@/utils/date';
+import { formatDate, addDays } from '@/utils/date';
 import { pluralize } from '@/utils/pluralize';
 
 const workoutStore = useWorkoutStore();
 const uiStore = useUiStore();
 const { t } = useI18n();
+
+const pageEl = ref<HTMLElement | null>(null);
+const swipeDirection = ref<'left' | 'right'>('left');
+const transitionName = computed(() => `slide-${swipeDirection.value}`);
+
+useSwipe(pageEl, {
+  threshold: 50,
+  onSwipeEnd(_event, direction) {
+    if (direction === 'left') {
+      swipeDirection.value = 'left';
+      uiStore.selectedDate = addDays(uiStore.selectedDate, 1);
+    } else if (direction === 'right') {
+      swipeDirection.value = 'right';
+      uiStore.selectedDate = addDays(uiStore.selectedDate, -1);
+    }
+  },
+});
 
 const currentDate = computed(() => formatDate(uiStore.selectedDate));
 
@@ -140,6 +162,13 @@ async function removeExercise(workoutExerciseId: string) {
   height: 100%;
   display: flex;
   flex-direction: column;
+  overflow-x: hidden;
+}
+
+.workout-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 .workout-summary {
@@ -147,5 +176,32 @@ async function removeExercise(workoutExerciseId: string) {
   padding: 16px;
   font-size: 13px;
   color: var(--van-text-color-2);
+}
+
+.slide-left-enter-active,
+.slide-left-leave-active,
+.slide-right-enter-active,
+.slide-right-leave-active {
+  transition:
+    transform 0.2s ease,
+    opacity 0.2s ease;
+}
+
+.slide-left-enter-from {
+  transform: translateX(24px);
+  opacity: 0;
+}
+.slide-left-leave-to {
+  transform: translateX(-24px);
+  opacity: 0;
+}
+
+.slide-right-enter-from {
+  transform: translateX(-24px);
+  opacity: 0;
+}
+.slide-right-leave-to {
+  transform: translateX(24px);
+  opacity: 0;
 }
 </style>

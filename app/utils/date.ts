@@ -9,6 +9,12 @@ export function isToday(dateStr: string): boolean {
   return dateStr === formatDate(new Date());
 }
 
+export function addDays(date: Date, days: number): Date {
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
+  return next;
+}
+
 export function parseDate(dateStr: string): Date {
   const parts = dateStr.split('-');
   const year = Number(parts[0]);

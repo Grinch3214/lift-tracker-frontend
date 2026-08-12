@@ -40,7 +40,7 @@ types/*.ts                 ← shared interfaces: MuscleGroup, Exercise, Workout
 app/data/muscle-groups.ts  ← static seed data: 6 muscle groups, ~35 exercises (id, name, muscleGroupId, equipment).
                               `name` here is an English dev fallback only — never rendered directly, see i18n below.
 app/utils/exercises.ts     ← lookups over the static catalog: getExerciseById, getMuscleGroupById, getExercisesByMuscleGroup
-app/utils/date.ts          ← formatDate/parseDate ('YYYY-MM-DD' string <-> Date), isToday, formatDateLabel/formatWeekdayLabel (locale-aware, take a locale string)
+app/utils/date.ts          ← formatDate/parseDate ('YYYY-MM-DD' string <-> Date), isToday, formatDateLabel/formatWeekdayLabel (locale-aware, take a locale string), addDays
 app/utils/format.ts        ← isBodyweight(weight) — the "kg"/"BW" text itself comes from translations, not from this util
 app/utils/pluralize.ts     ← pluralize(count, {one, few, many}) — Russian has 3 plural forms, not 2; see i18n below
 
@@ -64,7 +64,9 @@ app/layouts/default.vue           ← van-config-provider(dark) + TheHeader + <s
                                         dots on dates that have a workout
   app/components/the/TheFooter.vue   ← 2-tab bottom nav (Workout / History), route-driven
 
-  app/pages/index.vue ("/")          ← Workout page for ui.selectedDate
+  app/pages/index.vue ("/")          ← Workout page for ui.selectedDate; swipe left/right (useSwipe) moves
+                                        ui.selectedDate ±1 day, with a direction-aware Transition (slide+fade)
+                                        keyed on the date so the animation direction matches the swipe
     WorkoutRestTimer                    ← rest banner, only visible while ui.restTimer.active
     WorkoutExerciseCard (per exercise)  ← sets table, PR badge, add/edit/delete set, delete exercise
     WorkoutEmptyState                   ← shown when the selected day has no exercises yet
@@ -77,6 +79,10 @@ app/layouts/default.vue           ← van-config-provider(dark) + TheHeader + <s
 
 Global popups (`WorkoutExercisePicker`, `WorkoutAddSetSheet`, `HistoryExerciseHistoryModal`) are mounted once in the layout, not per-page, and are driven entirely by `ui` store state — components anywhere just flip `uiStore.exercisePicker.show`, `uiStore.addSetSheet = {...}`, or `uiStore.historyExerciseId` to open them.
 
+**Vant's `showConfirmDialog` rejects its promise when the user cancels.** `removeSet`/`removeExercise` in `index.vue` both `await` it — wrap in try/catch (return on catch) or cancelling throws an unhandled rejection in the console. Any new destructive-action confirmation should follow the same try/catch shape.
+
+**PR badge is per-set-id, not per-weight.** `ExerciseCard.vue`'s `isPR`/`prSetId` must flag only the *last* set that reaches the record weight, never every tied set.
+
 ## Internationalization (i18n)
 
 English + Russian via `@nuxtjs/i18n`. This is a permanent architecture decision, not a stopgap — see `docs/00-vision.md` for the "why translations live on the frontend forever" reasoning (short version: offline-first app, no backend to serve them from, and even the future cloud-sync backend won't own UI copy).
@@ -86,7 +92,7 @@ English + Russian via `@nuxtjs/i18n`. This is a permanent architecture decision,
 - Language switcher: `left-text` on the nav-bar in `TheHeader.vue`, toggles `setLocale()`.
 - **Pluralization is hand-rolled, not vue-i18n's built-in plural syntax.** Russian has 3 plural forms (1 / 2-4 / 5+), not the 2 vue-i18n's default English-style plural rule assumes. Pattern: locale files have `xWordOne`/`xWordFew`/`xWordMany` string keys, `app/utils/pluralize.ts#pluralize(count, {one, few, many})` picks the right one, then interpolate into `units.countWord` (`"{count} {word}"`). See `app/pages/index.vue`'s `summaryText` for the canonical example.
 - **Don't use `tm()` for plain string arrays** — in this Nuxt/vue-i18n setup `tm()` returns compiled message AST nodes, not evaluated strings (you'd need `rt()` to render them). That's why plural forms are separate string keys resolved via plain `t()`, not a `tm()`-fetched array — simpler and avoids that footgun entirely.
-- **`useI18n()` cannot be called inside a `defineNuxtPlugin()` callback in this setup** — it threw `"Must be called at the top of a setup function"` even with `dependsOn: ['i18n:plugin']`. Any global i18n-dependent logic (like the Vant locale sync) belongs in `app/app.vue`'s `<script setup>` instead, which has a guaranteed valid Vue composition context.
+- **`useI18n()` cannot be called inside a `defineNuxtPlugin()` callback in this setup.** Global i18n-dependent logic (e.g. the Vant locale sync) belongs in `app/app.vue`'s `<script setup>` instead, which has a guaranteed valid Vue composition context.
 - Catalog display names are never read from `app/data/muscle-groups.ts#name` — always resolve via `t(\`catalog.exercises.${id}\`)` / `t(\`catalog.muscleGroups.${id}\`)`. The `name` field there is an English fallback for dev/debug convenience only.
 
 ## MVP scope
