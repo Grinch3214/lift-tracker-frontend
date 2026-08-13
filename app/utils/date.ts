@@ -27,6 +27,10 @@ export function formatDateLabel(dateStr: string, locale: string): string {
   return parseDate(dateStr).toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
+export function formatShortDate(date: Date, locale: string): string {
+  return date.toLocaleDateString(locale, { day: 'numeric', month: 'short' });
+}
+
 export function formatWeekdayLabel(date: Date, locale: string): string {
   return date.toLocaleDateString(locale, { month: 'short', weekday: 'short' });
 }

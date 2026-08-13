@@ -1,15 +1,6 @@
 import { ref } from 'vue';
 import { defineStore } from 'pinia';
-
-export interface AddSetSheetState {
-  show: boolean;
-  date: string;
-  workoutExerciseId: string;
-  exerciseId: string;
-  setId: string | null;
-  defaultWeight: number;
-  defaultReps: number;
-}
+import type { AddSetSheetState } from '~~/types';
 
 export const useUiStore = defineStore('ui', () => {
   const selectedDate = ref<Date>(new Date());

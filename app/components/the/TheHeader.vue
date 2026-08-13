@@ -1,12 +1,15 @@
 <template>
   <header class="header">
     <van-nav-bar
-      :title="title"
       :left-text="locale.toUpperCase()"
       :right-text="isWorkoutPage ? dateLabel : ''"
       @click-left="toggleLocale"
       @click-right="isWorkoutPage && (showCalendar = true)"
-    />
+    >
+      <template #title>
+        <span class="title-link" @click="goHome">{{ title }}</span>
+      </template>
+    </van-nav-bar>
 
     <van-calendar
       v-model:show="showCalendar"
@@ -25,7 +28,7 @@
 import type { CalendarDayItem } from 'vant';
 import { useUiStore } from '@/stores/ui';
 import { useWorkoutStore } from '@/stores/workout';
-import { formatDate, isToday } from '@/utils/date';
+import { formatDate, isToday, formatShortDate } from '@/utils/date';
 
 const route = useRoute();
 const uiStore = useUiStore();
@@ -46,11 +49,16 @@ const titles = computed<Record<string, string>>(() => ({
 const title = computed(() => titles.value[route.path] ?? 'LiftTracker');
 
 const dateLabel = computed(() =>
-  isToday(formatDate(uiStore.selectedDate)) ? t('calendar.today') : formatDate(uiStore.selectedDate),
+  isToday(formatDate(uiStore.selectedDate)) ? t('calendar.today') : formatShortDate(uiStore.selectedDate, locale.value),
 );
 
 function toggleLocale() {
   setLocale(locale.value === 'en' ? 'ru' : 'en');
+}
+
+function goHome() {
+  uiStore.selectedDate = new Date();
+  navigateTo('/');
 }
 
 function dayFormatter(day: CalendarDayItem): CalendarDayItem {
@@ -71,5 +79,9 @@ function onConfirm(date: Date) {
   position: sticky;
   inset-block-start: 0;
   z-index: 5;
+}
+
+.title-link {
+  cursor: pointer;
 }
 </style>
