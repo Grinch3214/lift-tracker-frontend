@@ -1,6 +1,10 @@
 @use 'mixins' as m;
 @use 'varibles' as *;
 
+body.van-overflow-hidden {
+  scrollbar-gutter: stable;
+}
+
 .dot {
   opacity: 0.4;
 }
