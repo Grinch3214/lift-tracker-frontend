@@ -1,11 +1,11 @@
 <template>
   <div class="workout-item" @click="open">
     <div class="workout-item__date">
-      <span class="day">{{ dayLabel }}</span>
-      <span class="weekday">{{ weekdayLabel }}</span>
+      <span class="workout-item__day">{{ dayLabel }}</span>
+      <span class="workout-item__weekday">{{ weekdayLabel }}</span>
     </div>
     <div class="workout-item__stats">
-      <span class="exercise-names">{{ exerciseNames }}</span>
+      <span class="workout-item__group-names">{{ groupNames }}</span>
       <span class="dot">·</span>
       <span>{{ setsCountLabel }}</span>
       <span class="dot">·</span>
@@ -32,12 +32,14 @@ const date = computed(() => parseDate(props.workout.date));
 const dayLabel = computed(() => date.value.getDate());
 const weekdayLabel = computed(() => formatWeekdayLabel(date.value, locale.value));
 
-const exerciseNames = computed(() =>
-  props.workout.exercises
-    .map((we) => (getExerciseById(we.exerciseId) ? t(`catalog.exercises.${we.exerciseId}`) : null))
-    .filter(Boolean)
-    .join(', '),
-);
+const groupNames = computed(() => {
+  const groupIds = new Set(
+    props.workout.exercises
+      .map((we) => getExerciseById(we.exerciseId)?.muscleGroupId)
+      .filter((id): id is string => Boolean(id)),
+  );
+  return [...groupIds].map((id) => t(`catalog.muscleGroups.${id}`)).join(', ');
+});
 
 const totalSets = computed(() => props.workout.exercises.reduce((sum, e) => sum + e.sets.length, 0));
 
@@ -66,48 +68,45 @@ function open() {
   align-items: center;
   gap: 12px;
   padding: 12px 16px;
-  border-bottom: 1px solid var(--van-border-color);
+  border-block-end: 1px solid var(--van-border-color);
   cursor: pointer;
-}
 
-.workout-item__date {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  min-width: 44px;
-}
+  &__date {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 44px;
+  }
 
-.day {
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--van-text-color);
-}
+  &__day {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--van-text-color);
+  }
 
-.weekday {
-  font-size: 11px;
-  color: var(--van-text-color-2);
-  text-transform: uppercase;
-}
+  &__weekday {
+    font-size: 11px;
+    color: var(--van-text-color-2);
+    text-transform: uppercase;
+  }
 
-.workout-item__stats {
-  flex: 1;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  font-size: 13px;
-  color: var(--van-text-color-2);
-  min-width: 0;
-}
+  &__stats {
+    flex: 1;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    font-size: 13px;
+    color: var(--van-text-color-2);
+    min-width: 0;
+  }
 
-.exercise-names {
-  color: var(--van-text-color);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 100%;
-}
-
-.dot {
-  opacity: 0.4;
+  &__group-names {
+    color: var(--van-text-color);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
+    min-width: 0;
+  }
 }
 </style>

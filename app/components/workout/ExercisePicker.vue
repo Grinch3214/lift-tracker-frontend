@@ -5,8 +5,8 @@
     class="exercise-picker"
     @closed="selectedGroup = null"
   >
-    <div class="content">
-      <div v-if="selectedGroup" class="back-btn" @click="selectedGroup = null">
+    <div class="exercise-picker__content">
+      <div v-if="selectedGroup" class="exercise-picker__back-btn" @click="selectedGroup = null">
         {{ t('exercisePicker.back') }}
       </div>
 
@@ -84,13 +84,13 @@ function selectExercise(exercise: Exercise) {
 <style scoped lang="scss">
 .exercise-picker {
   height: 80%;
-}
 
-.back-btn {
-  padding: 12px 16px;
-  cursor: pointer;
-  color: var(--van-primary-color);
-  font-size: 14px;
-  font-weight: 600;
+  &__back-btn {
+    padding: 12px 16px;
+    cursor: pointer;
+    color: var(--van-primary-color);
+    font-size: 14px;
+    font-weight: 600;
+  }
 }
 </style>

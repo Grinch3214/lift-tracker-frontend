@@ -4,32 +4,32 @@
     position="bottom"
     round
     closeable
-    class="history-popup"
+    class="history-modal"
   >
-    <div class="sheet-handle" />
+    <div class="history-modal__handle" />
 
-    <div class="sheet-header">
-      <span class="sheet-title">{{ t('exerciseHistory.title') }}</span>
-      <span class="sheet-exercise-name">{{ exerciseName }}</span>
+    <div class="history-modal__header">
+      <span class="history-modal__title">{{ t('exerciseHistory.title') }}</span>
+      <span class="history-modal__exercise-name">{{ exerciseName }}</span>
     </div>
 
-    <div v-if="history.length === 0" class="empty">
+    <div v-if="history.length === 0" class="history-modal__empty">
       {{ t('exerciseHistory.empty') }}
     </div>
 
-    <div v-else class="history-list">
+    <div v-else class="history-modal__list">
       <div
         v-for="entry in history"
         :key="entry.workoutId"
-        class="history-entry"
+        class="history-modal__entry"
       >
-        <div class="entry-date">{{ formatDateLabel(entry.date, locale) }}</div>
-        <div class="entry-sets">
-          <span v-for="set in entry.sets" :key="set.id" class="entry-set">
+        <div class="history-modal__entry-date">{{ formatDateLabel(entry.date, locale) }}</div>
+        <div class="history-modal__entry-sets">
+          <span v-for="set in entry.sets" :key="set.id" class="history-modal__entry-set">
             {{ weightLabel(set.weight) }} × {{ set.reps }}
           </span>
         </div>
-        <div class="entry-stats">
+        <div class="history-modal__entry-stats">
           <span>{{ t('exerciseHistory.best', { value: entry.bestSet ? `${weightLabel(entry.bestSet.weight)} × ${entry.bestSet.reps}` : t('exerciseHistory.noBest') }) }}</span>
           <span class="dot">·</span>
           <span>{{ t('exerciseHistory.kgTotal', { volume: entry.totalVolume.toLocaleString() }) }}</span>
@@ -76,86 +76,84 @@ function weightLabel(weight: number): string {
 </script>
 
 <style scoped lang="scss">
-.history-popup {
+.history-modal {
   padding: 0 16px 40px;
   max-height: 70%;
-}
 
-.sheet-handle {
-  width: 36px;
-  height: 4px;
-  border-radius: 2px;
-  background: var(--van-gray-5);
-  margin: 12px auto 0;
-}
+  &__handle {
+    width: 36px;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--van-gray-5);
+    margin: 12px auto 0;
+  }
 
-.sheet-header {
-  padding: 16px 0 12px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-}
+  &__header {
+    padding: 16px 0 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
 
-.sheet-title {
-  font-size: 13px;
-  color: var(--van-text-color-2);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
+  &__title {
+    font-size: 13px;
+    color: var(--van-text-color-2);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
 
-.sheet-exercise-name {
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--van-text-color);
-}
+  &__exercise-name {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--van-text-color);
+  }
 
-.empty {
-  text-align: center;
-  padding: 24px 0;
-  color: var(--van-text-color-2);
-  font-size: 14px;
-}
+  &__empty {
+    text-align: center;
+    padding: 24px 0;
+    color: var(--van-text-color-2);
+    font-size: 14px;
+  }
 
-.history-list {
-  overflow-y: auto;
-  max-height: 50vh;
-}
+  &__list {
+    overflow-y: auto;
+    max-height: 50vh;
+  }
 
-.history-entry {
-  padding: 10px 0;
-  border-top: 1px solid var(--van-border-color);
-}
+  &__entry {
+    padding: 10px 0;
+    border-block-start: 1px solid var(--van-border-color);
+  }
 
-.entry-date {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--van-text-color);
-  margin-bottom: 4px;
-}
+  &__entry-date {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--van-text-color);
+    margin-block-end: 4px;
+  }
 
-.entry-sets {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 4px;
-}
+  &__entry-sets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-block-end: 4px;
+  }
 
-.entry-set {
-  font-size: 12px;
-  color: var(--van-text-color);
-  background: var(--van-background);
-  border-radius: 6px;
-  padding: 2px 6px;
-}
+  &__entry-set {
+    font-size: 12px;
+    color: var(--van-text-color);
+    background: var(--van-background);
+    border-radius: 6px;
+    padding: 2px 6px;
+  }
 
-.entry-stats {
-  font-size: 12px;
-  color: var(--van-text-color-2);
-}
-
-.dot {
-  opacity: 0.4;
-  margin: 0 4px;
+  &__entry-stats {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    color: var(--van-text-color-2);
+  }
 }
 </style>

@@ -81,6 +81,7 @@ const { locale, locales, setLocale } = useI18n();
     flex-wrap: wrap;
     gap: 12px;
     padding-block-end: 16px;
+    margin-block-start: auto;
   }
 
   &__color-watch {

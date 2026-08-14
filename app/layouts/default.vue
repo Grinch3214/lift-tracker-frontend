@@ -41,8 +41,8 @@ const uiStore = useUiStore();
   height: 48px;
   position: fixed;
   z-index: 4;
-  bottom: calc(var(--van-tabbar-height, 50px) + 24px);
-  right: 24px;
+  inset-block-end: calc(var(--van-tabbar-height, 50px) + 24px);
+  inset-inline-end: 24px;
   box-shadow: 0 4px 16px rgb(var(--van-primary-color-channels) / 40%);
 }
 </style>

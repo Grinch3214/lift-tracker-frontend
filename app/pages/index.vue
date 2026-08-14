@@ -3,7 +3,7 @@
     <WorkoutRestTimer />
 
     <Transition :name="transitionName" mode="out-in">
-      <div :key="currentDate" class="workout-content">
+      <div :key="currentDate" class="workout-page__content">
         <WorkoutEmptyState v-if="exercises.length === 0" />
 
         <template v-else>
@@ -18,7 +18,7 @@
             @delete-exercise="removeExercise(we.id)"
           />
 
-          <div class="workout-summary">{{ summaryText }}</div>
+          <div class="workout-page__summary">{{ summaryText }}</div>
         </template>
       </div>
     </Transition>
@@ -163,45 +163,45 @@ async function removeExercise(workoutExerciseId: string) {
   display: flex;
   flex-direction: column;
   overflow-x: hidden;
-}
 
-.workout-content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-}
+  &__content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
 
-.workout-summary {
-  text-align: center;
-  padding: 16px;
-  font-size: 13px;
-  color: var(--van-text-color-2);
-}
+    &.slide-left-enter-active,
+    &.slide-left-leave-active,
+    &.slide-right-enter-active,
+    &.slide-right-leave-active {
+      transition:
+        transform 0.2s ease,
+        opacity 0.2s ease;
+    }
 
-.slide-left-enter-active,
-.slide-left-leave-active,
-.slide-right-enter-active,
-.slide-right-leave-active {
-  transition:
-    transform 0.2s ease,
-    opacity 0.2s ease;
-}
+    &.slide-left-enter-from {
+      transform: translateX(24px);
+      opacity: 0;
+    }
+    &.slide-left-leave-to {
+      transform: translateX(-24px);
+      opacity: 0;
+    }
 
-.slide-left-enter-from {
-  transform: translateX(24px);
-  opacity: 0;
-}
-.slide-left-leave-to {
-  transform: translateX(-24px);
-  opacity: 0;
-}
+    &.slide-right-enter-from {
+      transform: translateX(-24px);
+      opacity: 0;
+    }
+    &.slide-right-leave-to {
+      transform: translateX(24px);
+      opacity: 0;
+    }
+  }
 
-.slide-right-enter-from {
-  transform: translateX(-24px);
-  opacity: 0;
-}
-.slide-right-leave-to {
-  transform: translateX(24px);
-  opacity: 0;
+  &__summary {
+    text-align: center;
+    padding: 16px;
+    font-size: 13px;
+    color: var(--van-text-color-2);
+  }
 }
 </style>

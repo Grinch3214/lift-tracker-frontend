@@ -3,18 +3,18 @@
     v-model:show="sheet.show"
     position="bottom"
     round
-    class="add-set-popup"
+    class="add-set-sheet"
   >
-    <div class="sheet-handle" />
+    <div class="add-set-sheet__handle" />
 
-    <div class="sheet-header">
-      <span class="sheet-title">{{
+    <div class="add-set-sheet__header">
+      <span class="add-set-sheet__title">{{
         sheet.setId !== null ? t('addSetSheet.editTitle') : t('addSetSheet.addTitle')
       }}</span>
-      <span class="sheet-exercise-name">{{ exerciseName }}</span>
+      <span class="add-set-sheet__exercise-name">{{ exerciseName }}</span>
     </div>
 
-    <div v-if="prevSession" class="prev-info">
+    <div v-if="prevSession" class="add-set-sheet__prev-info">
       <van-icon name="clock-o" size="13" color="#888" />
       <span>{{
         t('addSetSheet.lastSession', {
@@ -24,38 +24,38 @@
       }}</span>
     </div>
 
-    <div class="inputs-row">
-      <div class="input-block">
-        <label>{{ t('addSetSheet.weightLabel') }}</label>
+    <div class="add-set-sheet__inputs-row">
+      <div class="add-set-sheet__input-block">
+        <label class="add-set-sheet__input-label">{{ t('addSetSheet.weightLabel') }}</label>
         <van-field
           v-model="weightStr"
           type="number"
           input-align="center"
           placeholder="0"
-          class="set-input"
+          class="add-set-sheet__set-input"
         />
       </div>
-      <div class="input-divider" />
-      <div class="input-block">
-        <label>{{ t('addSetSheet.repsLabel') }}</label>
+      <div class="add-set-sheet__input-divider" />
+      <div class="add-set-sheet__input-block">
+        <label class="add-set-sheet__input-label">{{ t('addSetSheet.repsLabel') }}</label>
         <van-field
           v-model="repsStr"
           type="digit"
           input-align="center"
           placeholder="0"
-          class="set-input"
+          class="add-set-sheet__set-input"
         />
       </div>
     </div>
 
-    <div class="sheet-actions">
-      <van-button plain size="large" class="btn-cancel" @click="cancel"
+    <div class="add-set-sheet__actions">
+      <van-button plain size="large" class="add-set-sheet__btn-cancel" @click="cancel"
         >{{ t('addSetSheet.cancel') }}</van-button
       >
       <van-button
         type="primary"
         size="large"
-        class="btn-confirm"
+        class="add-set-sheet__btn-confirm"
         @click="confirm"
       >
         {{ sheet.setId !== null ? t('addSetSheet.save') : t('addSetSheet.addTitle') }}
@@ -132,99 +132,99 @@ function cancel() {
 </script>
 
 <style scoped lang="scss">
-.add-set-popup {
+.add-set-sheet {
   padding: 0 16px 40px;
-}
 
-.sheet-handle {
-  width: 36px;
-  height: 4px;
-  border-radius: 2px;
-  background: var(--van-gray-5);
-  margin: 12px auto 0;
-}
+  &__handle {
+    width: 36px;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--van-gray-5);
+    margin: 12px auto 0;
+  }
 
-.sheet-header {
-  padding: 16px 0 4px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-}
+  &__header {
+    padding: 16px 0 4px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
 
-.sheet-title {
-  font-size: 13px;
-  color: var(--van-text-color-2);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
+  &__title {
+    font-size: 13px;
+    color: var(--van-text-color-2);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
 
-.sheet-exercise-name {
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--van-text-color);
-}
+  &__exercise-name {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--van-text-color);
+  }
 
-.prev-info {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  font-size: 12px;
-  color: #888;
-  margin-bottom: 16px;
-}
+  &__prev-info {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    font-size: 12px;
+    color: #888;
+    margin-block-end: 16px;
+  }
 
-.inputs-row {
-  display: flex;
-  gap: 0;
-  margin: 8px 0 20px;
-  border: 1px solid var(--van-border-color);
-  border-radius: 12px;
-  overflow: hidden;
-}
+  &__inputs-row {
+    display: flex;
+    gap: 0;
+    margin: 8px 0 20px;
+    border: 1px solid var(--van-border-color);
+    border-radius: 12px;
+    overflow: hidden;
+  }
 
-.input-block {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 12px 0 8px;
-}
+  &__input-block {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 12px 0 8px;
+  }
 
-.input-block label {
-  font-size: 11px;
-  color: var(--van-text-color-2);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-bottom: 4px;
-}
+  &__input-label {
+    font-size: 11px;
+    color: var(--van-text-color-2);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-block-end: 4px;
+  }
 
-.set-input :deep(.van-field__control) {
-  font-size: 32px;
-  font-weight: 700;
-  text-align: center;
-  color: var(--van-text-color);
-}
+  &__set-input :deep(.van-field__control) {
+    font-size: 32px;
+    font-weight: 700;
+    text-align: center;
+    color: var(--van-text-color);
+  }
 
-.input-divider {
-  width: 1px;
-  background: var(--van-border-color);
-  align-self: stretch;
-}
+  &__input-divider {
+    width: 1px;
+    background: var(--van-border-color);
+    align-self: stretch;
+  }
 
-.sheet-actions {
-  display: flex;
-  gap: 10px;
-}
+  &__actions {
+    display: flex;
+    gap: 10px;
+  }
 
-.btn-cancel {
-  flex: 1;
-  border-radius: 10px;
-}
+  &__btn-cancel {
+    flex: 1;
+    border-radius: 10px;
+  }
 
-.btn-confirm {
-  flex: 2;
-  border-radius: 10px;
+  &__btn-confirm {
+    flex: 2;
+    border-radius: 10px;
+  }
 }
 </style>

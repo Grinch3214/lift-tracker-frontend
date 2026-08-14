@@ -15,6 +15,6 @@ const settingsStore = useSettingsStore();
 <style lang="scss" scoped>
 .tab-bar {
   background: var(--van-background-2);
-  border-top: 1px solid var(--van-border-color);
+  border-block-start: 1px solid var(--van-border-color);
 }
 </style>
