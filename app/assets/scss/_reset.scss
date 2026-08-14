@@ -2,6 +2,24 @@
 *::before,
 *::after {
   box-sizing: border-box;
+  // for firefox
+  scrollbar-width: thin;
+  scrollbar-color: #333333 #f1f1f1;
+}
+
+/* For Chrome, Edge, Safari */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #333333;
+  border-radius: 3px;
 }
 
 html,

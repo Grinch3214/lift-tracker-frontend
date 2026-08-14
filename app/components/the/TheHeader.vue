@@ -1,13 +1,15 @@
 <template>
   <header class="header">
     <van-nav-bar
-      :left-text="locale.toUpperCase()"
       :right-text="isWorkoutPage ? dateLabel : ''"
-      @click-left="toggleLocale"
+      @click-left="showSidebar = true"
       @click-right="isWorkoutPage && (showCalendar = true)"
     >
+      <template #left>
+        <van-icon name="wap-nav" size="18" />
+      </template>
       <template #title>
-        <span class="title-link" @click="goHome">{{ title }}</span>
+        <span class="header__link" @click="goHome">{{ title }}</span>
       </template>
     </van-nav-bar>
 
@@ -18,9 +20,11 @@
       :min-date="minDate"
       :max-date="maxDate"
       :formatter="dayFormatter"
-      color="#3c8ee0"
+      :color="settingsStore.primaryColorCss"
       @confirm="onConfirm"
     />
+
+    <TheSidebar v-model:show="showSidebar" />
   </header>
 </template>
 
@@ -28,14 +32,17 @@
 import type { CalendarDayItem } from 'vant';
 import { useUiStore } from '@/stores/ui';
 import { useWorkoutStore } from '@/stores/workout';
+import { useSettingsStore } from '@/stores/settings';
 import { formatDate, isToday, formatShortDate } from '@/utils/date';
 
 const route = useRoute();
 const uiStore = useUiStore();
 const workoutStore = useWorkoutStore();
-const { t, locale, setLocale } = useI18n();
+const settingsStore = useSettingsStore();
+const { t, locale } = useI18n();
 
 const showCalendar = ref(false);
+const showSidebar = ref(false);
 const minDate = ref(new Date(2025, 0, 1));
 const maxDate = ref(new Date(2030, 11, 31));
 
@@ -49,12 +56,10 @@ const titles = computed<Record<string, string>>(() => ({
 const title = computed(() => titles.value[route.path] ?? 'LiftTracker');
 
 const dateLabel = computed(() =>
-  isToday(formatDate(uiStore.selectedDate)) ? t('calendar.today') : formatShortDate(uiStore.selectedDate, locale.value),
+  isToday(formatDate(uiStore.selectedDate))
+    ? t('calendar.today')
+    : formatShortDate(uiStore.selectedDate, locale.value),
 );
-
-function toggleLocale() {
-  setLocale(locale.value === 'en' ? 'ru' : 'en');
-}
 
 function goHome() {
   uiStore.selectedDate = new Date();
@@ -79,9 +84,9 @@ function onConfirm(date: Date) {
   position: sticky;
   inset-block-start: 0;
   z-index: 5;
-}
 
-.title-link {
-  cursor: pointer;
+  &__link {
+    cursor: pointer;
+  }
 }
 </style>

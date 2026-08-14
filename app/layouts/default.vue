@@ -43,6 +43,6 @@ const uiStore = useUiStore();
   z-index: 4;
   bottom: calc(var(--van-tabbar-height, 50px) + 24px);
   right: 24px;
-  box-shadow: 0 4px 16px rgba(60, 142, 224, 0.4);
+  box-shadow: 0 4px 16px rgb(var(--van-primary-color-channels) / 40%);
 }
 </style>
