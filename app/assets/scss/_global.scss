@@ -1,8 +1,6 @@
 @use 'mixins' as m;
 @use 'varibles' as *;
 
-// Reused as-is (no per-component overrides) across history list items and
-// exercise-history entries — dot separator between stat fragments ("2 sets · 780 kg").
 .dot {
   opacity: 0.4;
 }

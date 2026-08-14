@@ -32,7 +32,6 @@ const sortedWorkouts = computed(() =>
 
   .van-empty {
     margin-block: auto;
-    padding-block: 0px var(--van-tabbar-height);
   }
 }
 </style>

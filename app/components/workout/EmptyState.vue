@@ -16,7 +16,6 @@ const { t } = useI18n();
   flex-direction: column;
   align-items: center;
   margin-block: auto;
-  padding-block-end: var(--van-tabbar-height);
   text-align: center;
 }
 </style>
