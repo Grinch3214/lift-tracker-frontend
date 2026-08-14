@@ -31,6 +31,10 @@ No test suite yet — there is no automated correctness gate. Verify changes by 
 
 **Path aliases:** `@/*` → `app/*` (Nuxt default). `~~/*` / `@@/*` → repo root — used for `types/*` since `types/` lives outside `app/` (e.g. `import type { Workout } from '~~/types'`).
 
+**Accent color is one CSS variable, not per-component props.** `settingsStore.primaryColor` (`app/stores/settings.ts`) holds bare "R G B" channels (e.g. `"60 142 224"`, no `rgb()` wrapper, no commas), persisted via `useStorage`. `app/app.vue` watches it and sets two `document.documentElement` custom properties: `--van-primary-color` (`rgb(R G B)`, a complete color — Vant's own component CSS reads this directly, e.g. `.van-button--primary { background: var(--van-primary-color) }`, so it must never be just bare channels) and `--van-primary-color-channels` (the bare channels themselves, for spots that need a translucent variant: `rgb(var(--van-primary-color-channels) / 40%)`). Don't reintroduce a hardcoded color literal anywhere — pull from one of these two variables, or from `settingsStore.primaryColorCss` (the `rgb(...)`-wrapped computed, for places that need a full color as a JS value, e.g. a `van-calendar :color` prop).
+
+**Styling convention: BEM + SCSS nesting, scoped by default.** Every component's `<style scoped>` is one root block class matching the component's role (e.g. `.exercise-card`, `.sidebar`), with `&__element` for its parts and bare `&.modifier`-style classes for state (`is-pr`, `active` — not `&--modifier`). Single-edge physical properties (`margin-bottom`, `border-top`, positioned `bottom`/`right`, etc.) are written as logical properties (`margin-block-end`, `border-block-start`, `inset-inline-end`) instead; multi-value shorthands (`padding: 14px 14px 10px`) are left physical. Global SCSS (`app/assets/scss/`) is reserved for things that don't belong to one component: reset, design tokens (`_varibles.scss`), mixins, and the rare utility class that's genuinely identical (not just similar) across components with zero per-usage overrides — e.g. `.dot`, the "·" stat separator. If you're tempted to add component-shaped CSS (a block with its own look) to a global file instead of the component's own `scoped` style, don't — that's what `scoped` exists to avoid re-litigating.
+
 ## Data flow
 
 ```
@@ -51,6 +55,8 @@ app/stores/workout.ts      ← THE store. workouts: Workout[] persisted via useS
 app/stores/ui.ts           ← UI-only state, not persisted: selectedDate (drives which day is shown on Workout page),
                               addSetSheet (bottom-sheet state), exercisePicker (show flag), historyExerciseId
                               (which exercise's history popup is open), restTimer (90s countdown + start/stop)
+app/stores/settings.ts     ← persisted user preferences (currently just primaryColor). Also exports colorPresets
+                              (plain const, not store state) — the 7 selectable accent-color options.
 ```
 
 Workouts only store `exerciseId` (a string pointing into the static catalog), never exercise name/equipment directly — components resolve display data via `getExerciseById`.
@@ -60,8 +66,12 @@ Workouts only store `exerciseId` (a string pointing into the static catalog), ne
 ```
 app/layouts/default.vue           ← van-config-provider(dark) + TheHeader + <slot> + TheFooter + FAB ("+")
                                      + global popups: WorkoutExercisePicker, WorkoutAddSetSheet, HistoryExerciseHistoryModal
-  app/components/the/TheHeader.vue   ← nav bar; van-calendar (show-confirm:false → closes on single tap),
-                                        dots on dates that have a workout
+  app/components/the/TheHeader.vue   ← nav bar; burger icon (left) opens TheSidebar; title is clickable
+                                        (goes home + resets to today); van-calendar (show-confirm:false →
+                                        closes on single tap), dots on dates that have a workout
+  app/components/the/TheSidebar.vue  ← left-side van-popup drawer: empty menu-list placeholder (top,
+                                        commented v-for scaffold), accent-color swatches + EN/RU buttons
+                                        (bottom) — language buttons are generated from useI18n().locales
   app/components/the/TheFooter.vue   ← 2-tab bottom nav (Workout / History), route-driven
 
   app/pages/index.vue ("/")          ← Workout page for ui.selectedDate; swipe left/right (useSwipe) moves
@@ -77,7 +87,7 @@ app/layouts/default.vue           ← van-config-provider(dark) + TheHeader + <s
 
 `app/app.vue` also syncs Vant's own component locale (`en-US`/`ru-RU`) to the active app language via a `watch(locale, ...)` — this lives in `app.vue`'s `<script setup>`, not a plugin (see i18n section for why).
 
-Global popups (`WorkoutExercisePicker`, `WorkoutAddSetSheet`, `HistoryExerciseHistoryModal`) are mounted once in the layout, not per-page, and are driven entirely by `ui` store state — components anywhere just flip `uiStore.exercisePicker.show`, `uiStore.addSetSheet = {...}`, or `uiStore.historyExerciseId` to open them.
+Global popups (`WorkoutExercisePicker`, `WorkoutAddSetSheet`, `HistoryExerciseHistoryModal`) are mounted once in the layout, not per-page, and are driven entirely by `ui` store state — components anywhere just flip `uiStore.exercisePicker.show`, `uiStore.addSetSheet = {...}`, or `uiStore.historyExerciseId` to open them. `TheSidebar` is different: only `TheHeader` can open it (nothing else needs to), so its `show` state is a local `ref` in `TheHeader.vue` passed down via `v-model:show`, not `ui` store state.
 
 **Vant's `showConfirmDialog` rejects its promise when the user cancels.** `removeSet`/`removeExercise` in `index.vue` both `await` it — wrap in try/catch (return on catch) or cancelling throws an unhandled rejection in the console. Any new destructive-action confirmation should follow the same try/catch shape.
 
