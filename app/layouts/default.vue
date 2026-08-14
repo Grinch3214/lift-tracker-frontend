@@ -35,6 +35,10 @@ const uiStore = useUiStore();
   background-color: var(--lt-main-bg-color);
   color: var(--lt-main-color);
 }
+main {
+  // Reserve space below page content.
+  padding-block-end: 60px;
+}
 .add-day {
   width: 34px;
   height: 34px;
