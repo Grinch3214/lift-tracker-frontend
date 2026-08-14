@@ -9,6 +9,7 @@
     <van-button
       type="primary"
       icon="plus"
+      size="small"
       class="add-day"
       @click="uiStore.exercisePicker.show = true"
     />
@@ -35,10 +36,8 @@ const uiStore = useUiStore();
   color: var(--lt-main-color);
 }
 .add-day {
-  --van-button-normal-padding: 0 10px;
-
-  width: 48px;
-  height: 48px;
+  width: 34px;
+  height: 34px;
   position: fixed;
   z-index: 4;
   inset-block-end: calc(var(--van-tabbar-height, 50px) + 24px);
