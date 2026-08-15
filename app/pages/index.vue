@@ -243,6 +243,8 @@ async function removeExercise(workoutExerciseId: string) {
   &__list {
     display: flex;
     flex-direction: column;
+    gap: 10px;
+    padding: 10px 12px;
   }
 
   &__summary {

@@ -117,7 +117,6 @@ function isPR(set: SetEntry): boolean {
 .exercise-card {
   background: var(--van-background-2);
   border-radius: 14px;
-  margin: 10px 12px;
   overflow: hidden;
 
   &.is-dragging {

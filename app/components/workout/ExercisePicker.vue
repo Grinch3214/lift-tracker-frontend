@@ -52,7 +52,7 @@
       </div>
 
       <div v-if="selectedIds.size > 0" class="exercise-picker__footer">
-        <van-button block type="primary" @click="confirmSelection">
+        <van-button type="primary" @click="confirmSelection">
           {{ t('exercisePicker.addSelected') }} <span class="dot">·</span>
           {{ selectedIds.size }}
         </van-button>
@@ -132,7 +132,7 @@ function confirmSelection() {
     overflow-y: auto;
 
     &.has-footer {
-      padding-block-end: calc(64px + env(safe-area-inset-bottom));
+      padding-block-end: calc(20px + env(safe-area-inset-bottom));
     }
   }
 
@@ -157,6 +157,7 @@ function confirmSelection() {
     padding-block-end: calc(12px + env(safe-area-inset-bottom));
     background: var(--van-background-2);
     box-shadow: 0 -2px 12px rgb(0 0 0 / 12%);
+    text-align: end;
   }
 }
 </style>
