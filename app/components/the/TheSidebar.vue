@@ -5,12 +5,27 @@
     class="sidebar"
     @update:show="$emit('update:show', $event)"
   >
-    <van-icon
-      name="cross"
-      size="18"
-      class="sidebar__close-btn"
-      @click="$emit('update:show', false)"
-    />
+    <div class="sidebar__header">
+      <div class="sidebar__locale-btns">
+        <button
+          v-for="loc in locales"
+          :key="loc.code"
+          type="button"
+          class="sidebar__locale-btn"
+          :class="{ active: locale === loc.code }"
+          @click="setLocale(loc.code)"
+        >
+          {{ loc.code.toUpperCase() }}
+        </button>
+      </div>
+
+      <van-icon
+        name="cross"
+        size="18"
+        class="sidebar__close-btn"
+        @click="$emit('update:show', false)"
+      />
+    </div>
 
     <ul class="sidebar__menu-list">
       <!-- <li v-for="item in menuItems" :key="item.id" @click="selectMenuItem(item)">{{ item.label }}</li> -->
@@ -28,19 +43,6 @@
         :style="{ backgroundColor: `rgb(${color})` }"
         @click="settingsStore.primaryColor = color"
       />
-    </div>
-
-    <div class="sidebar__locale-btns">
-      <button
-        v-for="loc in locales"
-        :key="loc.code"
-        type="button"
-        class="sidebar__locale-btn"
-        :class="{ active: locale === loc.code }"
-        @click="setLocale(loc.code)"
-      >
-        {{ loc.code.toUpperCase() }}
-      </button>
     </div>
   </van-popup>
 </template>
@@ -69,22 +71,34 @@ const { locale, locales, setLocale } = useI18n();
   padding: 20px 20px calc(20px + env(safe-area-inset-bottom, 0px));
   background: var(--van-background-2);
 
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-block-end: 12px;
+  }
+
   &__close-btn {
-    align-self: flex-end;
     color: var(--van-text-color-2);
     cursor: pointer;
-    margin-block-end: 12px;
   }
 
   &__color-picker {
     display: flex;
-    flex-wrap: wrap;
     gap: 12px;
-    padding-block-end: 16px;
     margin-block-start: auto;
+    padding: 0 2px 16px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
   }
 
   &__color-watch {
+    flex-shrink: 0;
     width: 32px;
     height: 32px;
     border-radius: 50%;
@@ -103,12 +117,17 @@ const { locale, locales, setLocale } = useI18n();
   }
 
   &__locale-btn {
-    flex: 1;
-    padding: 8px 0;
-    border-radius: 8px;
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
     border: 1px solid var(--van-border-color);
     background: transparent;
     color: var(--van-text-color-2);
+    font-size: 11px;
     font-weight: 600;
     cursor: pointer;
 
