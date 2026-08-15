@@ -1,7 +1,18 @@
 <template>
-  <van-tabbar :active-color="settingsStore.primaryColorCss" inactive-color="#666" :border="false" placeholder class="tab-bar" route>
-    <van-tabbar-item icon="notes-o" to="/">{{ t('nav.workout') }}</van-tabbar-item>
-    <van-tabbar-item icon="calendar-o" to="/history">{{ t('nav.history') }}</van-tabbar-item>
+  <van-tabbar
+    :active-color="settingsStore.primaryColorCss"
+    inactive-color="#666"
+    :border="false"
+    placeholder
+    class="tab-bar"
+    route
+  >
+    <van-tabbar-item icon="notes-o" to="/">{{
+      t('nav.workout')
+    }}</van-tabbar-item>
+    <van-tabbar-item icon="calendar-o" to="/history">{{
+      t('nav.history')
+    }}</van-tabbar-item>
   </van-tabbar>
 </template>
 

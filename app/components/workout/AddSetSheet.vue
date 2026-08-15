@@ -1,15 +1,10 @@
 <template>
-  <van-popup
-    v-model:show="sheet.show"
-    position="bottom"
-    round
-    class="add-set-sheet"
-  >
-    <div class="add-set-sheet__handle" />
-
+  <van-popup v-model:show="sheet.show" round class="add-set-sheet">
     <div class="add-set-sheet__header">
       <span class="add-set-sheet__title">{{
-        sheet.setId !== null ? t('addSetSheet.editTitle') : t('addSetSheet.addTitle')
+        sheet.setId !== null
+          ? t('addSetSheet.editTitle')
+          : t('addSetSheet.addTitle')
       }}</span>
       <span class="add-set-sheet__exercise-name">{{ exerciseName }}</span>
     </div>
@@ -18,7 +13,9 @@
       <van-icon name="clock-o" size="13" color="#888" />
       <span>{{
         t('addSetSheet.lastSession', {
-          weight: isBodyweight(prevSession.weight) ? t('units.bodyweight') : `${prevSession.weight} ${t('units.kg')}`,
+          weight: isBodyweight(prevSession.weight)
+            ? t('units.bodyweight')
+            : `${prevSession.weight} ${t('units.kg')}`,
           reps: prevSession.reps,
         })
       }}</span>
@@ -26,8 +23,11 @@
 
     <div class="add-set-sheet__inputs-row">
       <div class="add-set-sheet__input-block">
-        <label class="add-set-sheet__input-label">{{ t('addSetSheet.weightLabel') }}</label>
+        <label class="add-set-sheet__input-label">{{
+          t('addSetSheet.weightLabel')
+        }}</label>
         <van-field
+          ref="weightFieldRef"
           v-model="weightStr"
           type="number"
           input-align="center"
@@ -37,7 +37,9 @@
       </div>
       <div class="add-set-sheet__input-divider" />
       <div class="add-set-sheet__input-block">
-        <label class="add-set-sheet__input-label">{{ t('addSetSheet.repsLabel') }}</label>
+        <label class="add-set-sheet__input-label">{{
+          t('addSetSheet.repsLabel')
+        }}</label>
         <van-field
           v-model="repsStr"
           type="digit"
@@ -49,7 +51,11 @@
     </div>
 
     <div class="add-set-sheet__actions">
-      <van-button plain size="large" class="add-set-sheet__btn-cancel" @click="cancel"
+      <van-button
+        plain
+        size="large"
+        class="add-set-sheet__btn-cancel"
+        @click="cancel"
         >{{ t('addSetSheet.cancel') }}</van-button
       >
       <van-button
@@ -58,7 +64,11 @@
         class="add-set-sheet__btn-confirm"
         @click="confirm"
       >
-        {{ sheet.setId !== null ? t('addSetSheet.save') : t('addSetSheet.addTitle') }}
+        {{
+          sheet.setId !== null
+            ? t('addSetSheet.save')
+            : t('addSetSheet.addTitle')
+        }}
       </van-button>
     </div>
   </van-popup>
@@ -75,10 +85,15 @@ const { t } = useI18n();
 
 const sheet = computed(() => uiStore.addSetSheet);
 
-const exerciseName = computed(() => (sheet.value.exerciseId ? t(`catalog.exercises.${sheet.value.exerciseId}`) : ''));
+const exerciseName = computed(() =>
+  sheet.value.exerciseId
+    ? t(`catalog.exercises.${sheet.value.exerciseId}`)
+    : '',
+);
 
 const weightStr = ref('');
 const repsStr = ref('');
+const weightFieldRef = ref<{ focus: () => void } | null>(null);
 
 watch(
   () => sheet.value.show,
@@ -88,6 +103,7 @@ watch(
         sheet.value.defaultWeight > 0 ? String(sheet.value.defaultWeight) : '';
       repsStr.value =
         sheet.value.defaultReps > 0 ? String(sheet.value.defaultReps) : '';
+      nextTick(() => weightFieldRef.value?.focus());
     }
   },
 );
@@ -133,18 +149,11 @@ function cancel() {
 
 <style scoped lang="scss">
 .add-set-sheet {
-  padding: 0 16px 40px;
-
-  &__handle {
-    width: 36px;
-    height: 4px;
-    border-radius: 2px;
-    background: var(--van-gray-5);
-    margin: 12px auto 0;
-  }
+  width: min(340px, 90vw);
+  padding: 20px 16px;
 
   &__header {
-    padding: 16px 0 4px;
+    padding: 0 0 4px;
     display: flex;
     flex-direction: column;
     align-items: center;

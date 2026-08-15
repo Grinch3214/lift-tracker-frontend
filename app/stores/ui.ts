@@ -17,16 +17,6 @@ export const useUiStore = defineStore('ui', () => {
 
   const exercisePicker = ref({ show: false });
 
-  const historyExerciseId = ref<string | null>(null);
-
-  function openExerciseHistory(exerciseId: string) {
-    historyExerciseId.value = exerciseId;
-  }
-
-  function closeExerciseHistory() {
-    historyExerciseId.value = null;
-  }
-
   const restTimer = ref({
     active: false,
     remaining: 90,
@@ -57,9 +47,6 @@ export const useUiStore = defineStore('ui', () => {
     selectedDate,
     addSetSheet,
     exercisePicker,
-    historyExerciseId,
-    openExerciseHistory,
-    closeExerciseHistory,
     restTimer,
     startRestTimer,
     stopRestTimer,

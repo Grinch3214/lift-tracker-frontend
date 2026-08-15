@@ -13,14 +13,17 @@
     "@nuxtjs/i18n": "^10.6.0",
     "@pinia/nuxt": "^1.0.1",
     "@vant/nuxt": "^1.0.7",
+    "@vueuse/integrations": "^14.4.0",
     "@vueuse/nuxt": "^14.4.0",
     "nuxt": "^4.5.1",
     "pinia": "^4.0.2",
+    "sortablejs": "^1.15.7",
     "vant": "^4.10.0",
     "vue": "^3.5.40",
     "vue-router": "^5.2.0"
   },
   "devDependencies": {
+    "@types/sortablejs": "^1.15.9",
     "sass": "^1.102.0"
   }
 }

@@ -16,7 +16,6 @@
 
     <WorkoutExercisePicker />
     <WorkoutAddSetSheet />
-    <HistoryExerciseHistoryModal />
   </van-config-provider>
 </template>
 
@@ -40,8 +39,8 @@ main {
   padding-block-end: 60px;
 }
 .add-day {
-  width: 34px;
-  height: 34px;
+  width: 48px;
+  height: 48px;
   position: fixed;
   z-index: 4;
   inset-block-end: calc(var(--van-tabbar-height, 50px) + 24px);

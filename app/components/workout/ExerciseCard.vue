@@ -1,9 +1,15 @@
 <template>
   <div class="exercise-card">
     <div class="exercise-card__header">
-      <div class="exercise-card__meta" @click="uiStore.openExerciseHistory(exercise.id)">
-        <span class="exercise-card__name">{{ t(`catalog.exercises.${exercise.id}`) }}</span>
-        <van-tag v-if="exercise.equipment" plain class="exercise-card__equipment-tag">
+      <div class="exercise-card__meta">
+        <span class="exercise-card__name">{{
+          t(`catalog.exercises.${exercise.id}`)
+        }}</span>
+        <van-tag
+          v-if="exercise.equipment"
+          plain
+          class="exercise-card__equipment-tag"
+        >
           {{ t(`units.equipment.${exercise.equipment}`) }}
         </van-tag>
       </div>
@@ -52,7 +58,10 @@
       />
     </div>
 
-    <div v-if="workoutExercise.sets.length === 0" class="exercise-card__no-sets">
+    <div
+      v-if="workoutExercise.sets.length === 0"
+      class="exercise-card__no-sets"
+    >
       {{ t('workout.noSets') }}
     </div>
 
@@ -66,7 +75,6 @@
 <script setup lang="ts">
 import type { Exercise, WorkoutExercise, SetEntry } from '~~/types';
 import { useWorkoutStore } from '@/stores/workout';
-import { useUiStore } from '@/stores/ui';
 import { isBodyweight } from '@/utils/format';
 
 const { t } = useI18n();
@@ -84,7 +92,6 @@ defineEmits<{
 }>();
 
 const workoutStore = useWorkoutStore();
-const uiStore = useUiStore();
 
 const prWeight = computed(() => {
   const history = workoutStore.getExerciseHistory(props.exercise.id);
@@ -113,6 +120,10 @@ function isPR(set: SetEntry): boolean {
   margin: 10px 12px;
   overflow: hidden;
 
+  &.is-dragging {
+    opacity: 0.6;
+  }
+
   &__header {
     display: flex;
     align-items: center;
@@ -124,13 +135,13 @@ function isPR(set: SetEntry): boolean {
     display: flex;
     flex-direction: column;
     gap: 4px;
-    cursor: pointer;
   }
 
   &__name {
     font-size: 16px;
     font-weight: 700;
     color: var(--van-text-color);
+    user-select: none;
   }
 
   &__equipment-tag {
@@ -138,6 +149,7 @@ function isPR(set: SetEntry): boolean {
     border-color: var(--van-primary-color);
     color: var(--van-primary-color);
     font-size: 10px;
+    user-select: none;
   }
 
   &__delete-btn {
@@ -190,6 +202,7 @@ function isPR(set: SetEntry): boolean {
     background: rgba(255, 193, 7, 0.15);
     border-radius: 4px;
     padding: 1px 4px;
+    user-select: none;
   }
 
   &__set-reps,

@@ -17,7 +17,8 @@ useHead({
   meta: [
     {
       name: 'viewport',
-      content: 'width=device-width, initial-scale=1.0, viewport-fit=cover',
+      content:
+        'width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content',
     },
   ],
 });
@@ -40,8 +41,14 @@ watch(
 watch(
   () => settingsStore.primaryColor,
   (color) => {
-    document.documentElement.style.setProperty('--van-primary-color-channels', color);
-    document.documentElement.style.setProperty('--van-primary-color', `rgb(${color})`);
+    document.documentElement.style.setProperty(
+      '--van-primary-color-channels',
+      color,
+    );
+    document.documentElement.style.setProperty(
+      '--van-primary-color',
+      `rgb(${color})`,
+    );
   },
   { immediate: true },
 );

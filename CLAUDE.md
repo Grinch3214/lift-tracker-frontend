@@ -21,7 +21,7 @@ No test suite yet — there is no automated correctness gate. Verify changes by 
 
 ## Architecture
 
-**Stack:** Nuxt 4 + TypeScript + Pinia (`@pinia/nuxt`) + Vant 4 (`@vant/nuxt`) + VueUse (`@vueuse/nuxt`) + `@nuxtjs/i18n` + SCSS.
+**Stack:** Nuxt 4 + TypeScript + Pinia (`@pinia/nuxt`) + Vant 4 (`@vant/nuxt`) + VueUse (`@vueuse/nuxt`) + `@nuxtjs/i18n` + SCSS. Drag-and-drop reordering uses `@vueuse/integrations`'s `useSortable` (wraps `sortablejs`) — neither Vant nor `@vueuse/core` has a list-reorder primitive.
 
 **No backend.** Everything lives in the browser. All persistence is `localStorage` via VueUse's `useStorage`, wrapped inside Pinia stores.
 
@@ -39,7 +39,15 @@ No test suite yet — there is no automated correctness gate. Verify changes by 
 
 ```
 types/*.ts                 ← shared interfaces: MuscleGroup, Exercise, Workout, WorkoutExercise, SetEntry, EquipmentType
-                              all ids are string (crypto.randomUUID() at creation time)
+                              all ids are string, generated via app/utils/id.ts#generateId() at creation time
+
+app/utils/id.ts             ← generateId() — crypto.randomUUID() when available, otherwise a
+                              crypto.getRandomValues()-based UUID v4 fallback. Needed because randomUUID() only
+                              exists in secure contexts (HTTPS/localhost); opening the dev server from a phone
+                              over plain HTTP by LAN IP (`--host`) is not secure, so it's undefined there even
+                              though `crypto` itself exists — throws "crypto.randomUUID is not a function" at
+                              the first id-generating action. Always use this helper, never call
+                              crypto.randomUUID() directly.
 
 app/data/muscle-groups.ts  ← static seed data: 6 muscle groups, ~35 exercises (id, name, muscleGroupId, equipment).
                               `name` here is an English dev fallback only — never rendered directly, see i18n below.
@@ -49,12 +57,19 @@ app/utils/format.ts        ← isBodyweight(weight) — the "kg"/"BW" text itsel
 app/utils/pluralize.ts     ← pluralize(count, {one, few, many}) — Russian has 3 plural forms, not 2; see i18n below
 
 app/stores/workout.ts      ← THE store. workouts: Workout[] persisted via useStorage('lift-tracker-workouts').
-                              One Workout per date (getOrCreateWorkoutByDate enforces this). CRUD: addExercise,
-                              removeExercise, addSet, updateSet, removeSet. Also getExerciseHistory(exerciseId)
-                              and getPersonalRecord(exerciseId) — used for the PR badge and the history popup.
+                              One Workout per date (getOrCreateWorkoutByDate enforces this). CRUD: addExercise
+                              (always creates a new WorkoutExercise, even if that exerciseId is already logged
+                              that day — intentional, e.g. same exercise at the start and end of a session),
+                              removeExercise, reorderExercises(date, orderedIds) (persists drag-and-drop order,
+                              re-syncs WorkoutExercise.order to match), addSet, updateSet, removeSet. Also
+                              getExerciseHistory(exerciseId) (aggregates sets across ALL same-day entries for
+                              that exerciseId, not just the first match — matters now that duplicates exist)
+                              and getPersonalRecord(exerciseId) — used for the PR badge and the "last session"
+                              hint in the add-set popup.
 app/stores/ui.ts           ← UI-only state, not persisted: selectedDate (drives which day is shown on Workout page),
-                              addSetSheet (bottom-sheet state), exercisePicker (show flag), historyExerciseId
-                              (which exercise's history popup is open), restTimer (90s countdown + start/stop)
+                              addSetSheet (add/edit-set popup state — the name is historical, it's rendered
+                              as a centered popup now, not a bottom sheet), exercisePicker (show flag),
+                              restTimer (90s countdown + start/stop)
 app/stores/settings.ts     ← persisted user preferences (currently just primaryColor). Also exports colorPresets
                               (plain const, not store state) — the 7 selectable accent-color options.
 ```
@@ -65,7 +80,7 @@ Workouts only store `exerciseId` (a string pointing into the static catalog), ne
 
 ```
 app/layouts/default.vue           ← van-config-provider(dark) + TheHeader + <slot> + TheFooter + FAB ("+")
-                                     + global popups: WorkoutExercisePicker, WorkoutAddSetSheet, HistoryExerciseHistoryModal
+                                     + global popups: WorkoutExercisePicker, WorkoutAddSetSheet
   app/components/the/TheHeader.vue   ← nav bar; burger icon (left) opens TheSidebar; title is clickable
                                         (goes home + resets to today); van-calendar (show-confirm:false →
                                         closes on single tap), dots on dates that have a workout
@@ -76,7 +91,10 @@ app/layouts/default.vue           ← van-config-provider(dark) + TheHeader + <s
 
   app/pages/index.vue ("/")          ← Workout page for ui.selectedDate; swipe left/right (useSwipe) moves
                                         ui.selectedDate ±1 day, with a direction-aware Transition (slide+fade)
-                                        keyed on the date so the animation direction matches the swipe
+                                        keyed on the date so the animation direction matches the swipe.
+                                        Exercise cards are drag-reorderable (useSortable, whole card is the
+                                        drag target, delayOnTouchOnly so a quick tap still reaches buttons/sets
+                                        underneath) — see the reactivity gotcha below before touching this.
     WorkoutRestTimer                    ← rest banner, only visible while ui.restTimer.active
     WorkoutExerciseCard (per exercise)  ← sets table, PR badge, add/edit/delete set, delete exercise
     WorkoutEmptyState                   ← shown when the selected day has no exercises yet
@@ -87,23 +105,30 @@ app/layouts/default.vue           ← van-config-provider(dark) + TheHeader + <s
 
 `app/app.vue` also syncs Vant's own component locale (`en-US`/`ru-RU`) to the active app language via a `watch(locale, ...)` — this lives in `app.vue`'s `<script setup>`, not a plugin (see i18n section for why).
 
-Global popups (`WorkoutExercisePicker`, `WorkoutAddSetSheet`, `HistoryExerciseHistoryModal`) are mounted once in the layout, not per-page, and are driven entirely by `ui` store state — components anywhere just flip `uiStore.exercisePicker.show`, `uiStore.addSetSheet = {...}`, or `uiStore.historyExerciseId` to open them. `TheSidebar` is different: only `TheHeader` can open it (nothing else needs to), so its `show` state is a local `ref` in `TheHeader.vue` passed down via `v-model:show`, not `ui` store state.
+Global popups (`WorkoutExercisePicker`, `WorkoutAddSetSheet`) are mounted once in the layout, not per-page, and are driven entirely by `ui` store state — components anywhere just flip `uiStore.exercisePicker.show` or `uiStore.addSetSheet = {...}` to open them. `TheSidebar` is different: only `TheHeader` can open it (nothing else needs to), so its `show` state is a local `ref` in `TheHeader.vue` passed down via `v-model:show`, not `ui` store state.
+
+**There is no per-exercise history view.** It existed briefly (tap the exercise card's title on the Workout page) but was removed — it wasn't discoverable (the click target wasn't obvious as interactive) and it also fought with drag-reorder: long-pressing text to start a drag would trigger the browser's native text-selection instead. The `/history` tab covers this need at the day level. Don't reintroduce a click handler on `.exercise-card__name`/`ExerciseCard.vue`'s title without solving both problems again.
 
 **Vant's `showConfirmDialog` rejects its promise when the user cancels.** `removeSet`/`removeExercise` in `index.vue` both `await` it — wrap in try/catch (return on catch) or cancelling throws an unhandled rejection in the console. Any new destructive-action confirmation should follow the same try/catch shape.
 
 **PR badge is per-set-id, not per-weight.** `ExerciseCard.vue`'s `isPR`/`prSetId` must flag only the *last* set that reaches the record weight, never every tied set.
 
+**A computed that only reads a property (not `.length`/an iteration) on a nested reactive array won't react to `.push()`/`.splice()` on it.** `workoutStore.getWorkoutByDate(date)?.exercises` is a plain property read — Vue tracks "did `.exercises` get reassigned", not "did its contents change". `index.vue`'s `storedExercises` computed spreads it (`[...workout.exercises]`) specifically to force the iteration that makes push/splice mutations (e.g. `addExercise`) actually invalidate it. This bit only in a scenario with an intermediate `ref` feeding `useSortable` (see below) — a bare `v-for="we in exercises"` directly over a computed doesn't need this, because `v-for`'s own iteration during render establishes the same tracking implicitly.
+
+**`useSortable`'s target element gets destroyed/recreated on every date swipe** (`.workout-page__list` sits inside a `:key="currentDate"` Transition). Pass `watchElement: true` or the Sortable instance keeps pointing at a detached node after the first swipe and dragging silently stops working. Persisting the reorder goes through an explicit `workoutStore.reorderExercises()` call in a `watch`, not by letting `useSortable` own the store's array directly — same "mutations go through named store actions" rule as everywhere else in this app.
+
 ## Internationalization (i18n)
 
 English + Russian via `@nuxtjs/i18n`. This is a permanent architecture decision, not a stopgap — see `docs/00-vision.md` for the "why translations live on the frontend forever" reasoning (short version: offline-first app, no backend to serve them from, and even the future cloud-sync backend won't own UI copy).
 
-- `i18n/locales/en.json`, `i18n/locales/ru.json` — all translatable strings, namespaced by feature (`workout.*`, `addSetSheet.*`, `exercisePicker.*`, `history.*`, `exerciseHistory.*`, `restTimer.*`, `units.*`, `calendar.*`) plus `catalog.muscleGroups.<id>` / `catalog.exercises.<id>` for the exercise catalog, keyed by the same ids used in `app/data/muscle-groups.ts`.
+- `i18n/locales/en.json`, `i18n/locales/ru.json` — all translatable strings, namespaced by feature (`workout.*`, `addSetSheet.*`, `exercisePicker.*`, `history.*`, `restTimer.*`, `units.*`, `calendar.*`) plus `catalog.muscleGroups.<id>` / `catalog.exercises.<id>` for the exercise catalog, keyed by the same ids used in `app/data/muscle-groups.ts`.
 - `strategy: 'no_prefix'` in `nuxt.config.ts` — no `/ru/...` URL prefixes, locale is cookie-only (`lift-tracker-locale`). Fine given `ssr: false` and no SEO need.
-- Language switcher: `left-text` on the nav-bar in `TheHeader.vue`, toggles `setLocale()`.
+- Language switcher: EN/RU buttons in `TheSidebar.vue` (burger menu), generated from `useI18n().locales`, call `setLocale()`.
 - **Pluralization is hand-rolled, not vue-i18n's built-in plural syntax.** Russian has 3 plural forms (1 / 2-4 / 5+), not the 2 vue-i18n's default English-style plural rule assumes. Pattern: locale files have `xWordOne`/`xWordFew`/`xWordMany` string keys, `app/utils/pluralize.ts#pluralize(count, {one, few, many})` picks the right one, then interpolate into `units.countWord` (`"{count} {word}"`). See `app/pages/index.vue`'s `summaryText` for the canonical example.
 - **Don't use `tm()` for plain string arrays** — in this Nuxt/vue-i18n setup `tm()` returns compiled message AST nodes, not evaluated strings (you'd need `rt()` to render them). That's why plural forms are separate string keys resolved via plain `t()`, not a `tm()`-fetched array — simpler and avoids that footgun entirely.
 - **`useI18n()` cannot be called inside a `defineNuxtPlugin()` callback in this setup.** Global i18n-dependent logic (e.g. the Vant locale sync) belongs in `app/app.vue`'s `<script setup>` instead, which has a guaranteed valid Vue composition context.
 - Catalog display names are never read from `app/data/muscle-groups.ts#name` — always resolve via `t(\`catalog.exercises.${id}\`)` / `t(\`catalog.muscleGroups.${id}\`)`. The `name` field there is an English fallback for dev/debug convenience only.
+- **A literal `|` inside a message string is vue-i18n's plural-form separator, even via plain `t()` with no explicit plural syntax intended.** If the params include a `count` key, vue-i18n uses it to pick which side of the `|` to render — silently mangling any string where `|` was meant as a literal visual separator (e.g. an attempted `"Добавить | {count}"` key rendered as just `"Добавить"` or just the bare count depending on its value). Build that kind of "label | number" string by concatenating in the template/script instead of putting `|` in the locale JSON.
 
 ## MVP scope
 

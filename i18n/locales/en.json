@@ -30,19 +30,12 @@
   "exercisePicker": {
     "selectTitle": "Select Exercise",
     "back": "← Back",
-    "alreadyAdded": "{name} already in workout",
-    "added": "{name} added"
+    "addSelected": "Add",
+    "added": "Added"
   },
   "history": {
     "empty": "No workouts logged yet",
     "kg": "{weight} kg"
-  },
-  "exerciseHistory": {
-    "title": "History",
-    "empty": "History will appear here after your first workout with this exercise.",
-    "best": "Best: {value}",
-    "noBest": "—",
-    "kgTotal": "{volume} kg total"
   },
   "restTimer": {
     "label": "Rest"

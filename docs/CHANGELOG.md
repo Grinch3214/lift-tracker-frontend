@@ -104,3 +104,33 @@
 ### Notes
 
 - Accent-color customization wasn't in the original MVP scope (`docs/02-mvp.md`) but was built now rather than later — see `docs/00-vision.md` for why.
+
+## 2026-08-15
+
+### Added
+
+- Multi-select in the exercise picker: tapping an exercise toggles selection (highlighted with the accent color, no checkbox) instead of adding it immediately. A sticky "Добавить | N" button appears once at least one is selected and adds all of them to the day in one action. Selection is scoped to the currently open muscle group — going back to the group list or closing the picker clears it.
+- Drag-and-drop reordering of exercises within a day: press-and-hold (150ms) anywhere on a card, then drag to reorder — a quick tap still reaches the card's own buttons/sets normally. Order persists via a new `workoutStore.reorderExercises()`. New dependency: `@vueuse/integrations`'s `useSortable` (wraps `sortablejs`) — neither Vant nor the already-installed `@vueuse/core` has a list-reorder primitive.
+- The same exercise can now be logged more than once in a single day (e.g. at the start and end of a session) — the picker no longer blocks re-adding an already-logged exercise.
+
+### Changed
+
+- `workoutStore.addExercise` always creates a new `WorkoutExercise` entry instead of merging into an existing one for the same `exerciseId`.
+- `workoutStore.getExerciseHistory` now aggregates sets across every same-day entry for an exercise instead of only the first match — needed once the same exercise can appear twice in one day, otherwise a duplicate's sets silently dropped out of history/PR/volume.
+
+### Fixed
+
+- Any action that creates an id (`addExercise`, `addSet`, etc.) crashed with "crypto.randomUUID is not a function" when the app was opened from a phone over LAN by IP (`npm run dev -- --host`, `http://192.168.x.x:3000`) — `crypto.randomUUID()` only exists in secure contexts (HTTPS or `localhost`), so it's undefined over plain HTTP by IP even though `crypto` itself is present. New `app/utils/id.ts#generateId()` falls back to a `crypto.getRandomValues()`-based UUID v4 when `randomUUID` isn't available; all id-generation now goes through it instead of calling `crypto.randomUUID()` directly.
+- Opening the "add set" sheet on a real Android phone (over the LAN dev URL) could get its buttons pushed under the on-screen keyboard — the layout viewport wasn't shrinking when the keyboard opened. Added `interactive-widget=resizes-content` to the viewport meta tag (`app/app.vue`) so mobile browsers actually resize the visual viewport instead of overlaying the keyboard on top of fixed-position content.
+
+### Removed
+
+- The per-exercise history popup (opened by tapping an exercise card's title on the Workout page) — removed entirely. It wasn't discoverable as a click target, and long-pressing the title to start a drag-reorder gesture would trigger the browser's native text-selection instead of the drag, fighting with the new drag-and-drop feature. The `/history` tab already covers "see previous progress" at the day level, so nothing replaces this — `docs/02-mvp.md` and `docs/03-roadmap.md` updated to drop the claim.
+
+### Changed
+
+- `AddSetSheet.vue` (add/edit a set) is now a centered popup instead of a bottom-sheet drawer — the bottom-anchored sheet was more exposed to on-screen-keyboard layout issues on real devices; a centered popup reflows more predictably when the keyboard opens.
+
+### Notes
+
+- Two Vue reactivity/vue-i18n gotchas surfaced while building this, both documented in `CLAUDE.md` so they don't get rediscovered: a computed that only reads a property off a nested reactive array (not `.length`/an iteration) won't react to `.push()`/`.splice()` on it — relevant now that `index.vue` needs a writable local copy of the exercise list for `useSortable`; and a literal `|` in a vue-i18n message string is parsed as the plural-form separator even through plain `t()`, which is why the "Добавить | N" button label is composed in the template instead of living in the locale JSON as one string.

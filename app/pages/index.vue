@@ -7,16 +7,18 @@
         <WorkoutEmptyState v-if="exercises.length === 0" />
 
         <template v-else>
-          <WorkoutExerciseCard
-            v-for="we in exercises"
-            :key="we.id"
-            :exercise="getExercise(we.exerciseId)"
-            :workout-exercise="we"
-            @add-set="openAddSet(we)"
-            @edit-set="(set: SetEntry) => openEditSet(we, set)"
-            @delete-set="(setId: string) => removeSet(we.id, setId)"
-            @delete-exercise="removeExercise(we.id)"
-          />
+          <div ref="listEl" class="workout-page__list">
+            <WorkoutExerciseCard
+              v-for="we in exercises"
+              :key="we.id"
+              :exercise="getExercise(we.exerciseId)"
+              :workout-exercise="we"
+              @add-set="openAddSet(we)"
+              @edit-set="(set: SetEntry) => openEditSet(we, set)"
+              @delete-set="(setId: string) => removeSet(we.id, setId)"
+              @delete-exercise="removeExercise(we.id)"
+            />
+          </div>
 
           <div class="workout-page__summary">{{ summaryText }}</div>
         </template>
@@ -28,6 +30,7 @@
 <script setup lang="ts">
 import { showConfirmDialog } from 'vant';
 import { useSwipe } from '@vueuse/core';
+import { useSortable } from '@vueuse/integrations/useSortable';
 import type { SetEntry, WorkoutExercise } from '~~/types';
 import { useWorkoutStore } from '@/stores/workout';
 import { useUiStore } from '@/stores/ui';
@@ -58,9 +61,49 @@ useSwipe(pageEl, {
 
 const currentDate = computed(() => formatDate(uiStore.selectedDate));
 
-const exercises = computed(
-  () => workoutStore.getWorkoutByDate(currentDate.value)?.exercises ?? [],
+// Spreading (not just returning the property) forces iteration, which is what makes
+// Vue's reactivity actually track push/splice mutations on the nested array - a plain
+// property read only tracks whether `.exercises` itself gets reassigned.
+const storedExercises = computed(() => [
+  ...(workoutStore.getWorkoutByDate(currentDate.value)?.exercises ?? []),
+]);
+
+// Local working copy useSortable can freely reorder while dragging. Only resynced
+// from the store when the set of exercise ids actually changes (add/remove/date
+// switch) - not on every store write, since reorderExercises() below would otherwise
+// echo straight back into this watcher and ping-pong forever.
+const exercises = ref<WorkoutExercise[]>([]);
+watch(
+  storedExercises,
+  (val) => {
+    const currentIds = exercises.value
+      .map((e) => e.id)
+      .sort()
+      .join(',');
+    const newIds = val
+      .map((e) => e.id)
+      .sort()
+      .join(',');
+    if (currentIds !== newIds) exercises.value = [...val];
+  },
+  { immediate: true },
 );
+
+const listEl = ref<HTMLElement | null>(null);
+useSortable(listEl, exercises, {
+  watchElement: true, // .workout-page__list is destroyed/recreated on every date swipe (:key="currentDate")
+  delay: 150,
+  delayOnTouchOnly: true,
+  animation: 150,
+  chosenClass: 'is-dragging',
+});
+
+watch(exercises, (val) => {
+  workoutStore.reorderExercises(
+    currentDate.value,
+    val.map((e) => e.id),
+  );
+});
 
 const totalSets = computed(() =>
   exercises.value.reduce((sum, ex) => sum + ex.sets.length, 0),
@@ -195,6 +238,11 @@ async function removeExercise(workoutExerciseId: string) {
       transform: translateX(24px);
       opacity: 0;
     }
+  }
+
+  &__list {
+    display: flex;
+    flex-direction: column;
   }
 
   &__summary {

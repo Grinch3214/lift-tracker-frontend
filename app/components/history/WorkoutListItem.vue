@@ -9,7 +9,9 @@
       <span class="dot">·</span>
       <span>{{ setsCountLabel }}</span>
       <span class="dot">·</span>
-      <span>{{ t('history.kg', { weight: totalVolume.toLocaleString() }) }}</span>
+      <span>{{
+        t('history.kg', { weight: totalVolume.toLocaleString() })
+      }}</span>
     </div>
     <van-icon name="arrow" size="14" color="#888" />
   </div>
@@ -30,7 +32,9 @@ const { t, locale } = useI18n();
 const date = computed(() => parseDate(props.workout.date));
 
 const dayLabel = computed(() => date.value.getDate());
-const weekdayLabel = computed(() => formatWeekdayLabel(date.value, locale.value));
+const weekdayLabel = computed(() =>
+  formatWeekdayLabel(date.value, locale.value),
+);
 
 const groupNames = computed(() => {
   const groupIds = new Set(
@@ -41,7 +45,9 @@ const groupNames = computed(() => {
   return [...groupIds].map((id) => t(`catalog.muscleGroups.${id}`)).join(', ');
 });
 
-const totalSets = computed(() => props.workout.exercises.reduce((sum, e) => sum + e.sets.length, 0));
+const totalSets = computed(() =>
+  props.workout.exercises.reduce((sum, e) => sum + e.sets.length, 0),
+);
 
 const setsCountLabel = computed(() => {
   const word = pluralize(totalSets.value, {
@@ -53,7 +59,10 @@ const setsCountLabel = computed(() => {
 });
 
 const totalVolume = computed(() =>
-  props.workout.exercises.reduce((sum, e) => sum + e.sets.reduce((s, set) => s + set.weight * set.reps, 0), 0),
+  props.workout.exercises.reduce(
+    (sum, e) => sum + e.sets.reduce((s, set) => s + set.weight * set.reps, 0),
+    0,
+  ),
 );
 
 function open() {

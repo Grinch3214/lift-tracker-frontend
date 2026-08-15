@@ -30,19 +30,12 @@
   "exercisePicker": {
     "selectTitle": "Выберите упражнение",
     "back": "← Назад",
-    "alreadyAdded": "{name} уже добавлено в тренировку",
-    "added": "{name} добавлено"
+    "addSelected": "Добавить",
+    "added": "Добавлено"
   },
   "history": {
     "empty": "Тренировок пока нет",
     "kg": "{weight} кг"
-  },
-  "exerciseHistory": {
-    "title": "История",
-    "empty": "История появится здесь после первой тренировки с этим упражнением.",
-    "best": "Лучший: {value}",
-    "noBest": "—",
-    "kgTotal": "{volume} кг всего"
   },
   "restTimer": {
     "label": "Отдых"

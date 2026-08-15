@@ -9,7 +9,10 @@
       <span class="rest-timer__label">{{ t('restTimer.label') }}</span>
       <span class="rest-timer__value">{{ timerDisplay }}</span>
       <div class="rest-timer__bar">
-        <div class="rest-timer__bar-fill" :style="{ width: timerProgress + '%' }" />
+        <div
+          class="rest-timer__bar-fill"
+          :style="{ width: timerProgress + '%' }"
+        />
       </div>
       <van-icon name="cross" size="13" color="#888" />
     </div>
