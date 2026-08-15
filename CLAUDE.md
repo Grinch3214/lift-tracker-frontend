@@ -84,9 +84,12 @@ app/layouts/default.vue           ← van-config-provider(dark) + TheHeader + <s
   app/components/the/TheHeader.vue   ← nav bar; burger icon (left) opens TheSidebar; title is clickable
                                         (goes home + resets to today); van-calendar (show-confirm:false →
                                         closes on single tap), dots on dates that have a workout
-  app/components/the/TheSidebar.vue  ← left-side van-popup drawer: empty menu-list placeholder (top,
-                                        commented v-for scaffold), accent-color swatches + EN/RU buttons
-                                        (bottom) — language buttons are generated from useI18n().locales
+  app/components/the/TheSidebar.vue  ← left-side van-popup drawer: header row (EN/RU circular locale
+                                        buttons, left — generated from useI18n().locales, sized/shaped to
+                                        match the color swatches on purpose, for future flag-icon swap-in;
+                                        close icon, right), empty menu-list placeholder (commented v-for
+                                        scaffold), accent-color swatches (bottom, horizontally scrollable —
+                                        native scrollbar hidden via scrollbar-width/::-webkit-scrollbar)
   app/components/the/TheFooter.vue   ← 2-tab bottom nav (Workout / History), route-driven
 
   app/pages/index.vue ("/")          ← Workout page for ui.selectedDate; swipe left/right (useSwipe) moves
