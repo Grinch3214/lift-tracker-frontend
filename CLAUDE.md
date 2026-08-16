@@ -35,6 +35,18 @@ No test suite yet — there is no automated correctness gate. Verify changes by 
 
 **Styling convention: BEM + SCSS nesting, scoped by default.** Every component's `<style scoped>` is one root block class matching the component's role (e.g. `.exercise-card`, `.sidebar`), with `&__element` for its parts and bare `&.modifier`-style classes for state (`is-pr`, `active` — not `&--modifier`). Single-edge physical properties (`margin-bottom`, `border-top`, positioned `bottom`/`right`, etc.) are written as logical properties (`margin-block-end`, `border-block-start`, `inset-inline-end`) instead; multi-value shorthands (`padding: 14px 14px 10px`) are left physical. Global SCSS (`app/assets/scss/`) is reserved for things that don't belong to one component: reset, design tokens (`_varibles.scss`), mixins, and the rare utility class that's genuinely identical (not just similar) across components with zero per-usage overrides — e.g. `.dot`, the "·" stat separator. If you're tempted to add component-shaped CSS (a block with its own look) to a global file instead of the component's own `scoped` style, don't — that's what `scoped` exists to avoid re-litigating.
 
+**`<script setup>` structure — fixed top-to-bottom order in every component:**
+1. Imports — only what Nuxt doesn't auto-import (Vue reactivity APIs like `ref`/`computed`/`watch`/`onMounted`, and `useXStore`/`useI18n`/`useRoute` etc. are auto-imported; don't add explicit imports for them).
+2. `defineProps<...>()`
+3. `defineEmits<...>()`
+4. Router / Nuxt & module composables — `useRoute()`, `useRouter()`, `useHead()`, `useSeoMeta()`, `useI18n()`, etc. (anything framework/module-provided, not ours)
+5. Stores — `useXStore()` (our own Pinia stores only)
+6. Component logic — refs, computed, functions, `watch(...)`, roughly in that order; a short comment banner ahead of each distinct logical group is fine, but don't force one for a single line
+7. `defineExpose(...)`
+8. Lifecycle hooks — `onMounted`, etc.
+
+Skip sections that don't apply (most components have no props/emits/router/expose) rather than leaving an empty placeholder.
+
 ## Data flow
 
 ```

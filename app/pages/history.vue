@@ -16,8 +16,8 @@
 <script setup lang="ts">
 import { useWorkoutStore } from '@/stores/workout';
 
-const workoutStore = useWorkoutStore();
 const { t } = useI18n();
+const workoutStore = useWorkoutStore();
 
 const sortedWorkouts = computed(() =>
   [...workoutStore.workouts].sort((a, b) => b.date.localeCompare(a.date)),

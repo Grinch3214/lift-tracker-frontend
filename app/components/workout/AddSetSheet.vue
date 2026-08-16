@@ -79,9 +79,13 @@ import { useUiStore } from '@/stores/ui';
 import { useWorkoutStore } from '@/stores/workout';
 import { isBodyweight } from '@/utils/format';
 
+const { t } = useI18n();
 const uiStore = useUiStore();
 const workoutStore = useWorkoutStore();
-const { t } = useI18n();
+
+const weightStr = ref('');
+const repsStr = ref('');
+const weightFieldRef = ref<{ focus: () => void } | null>(null);
 
 const sheet = computed(() => uiStore.addSetSheet);
 
@@ -91,9 +95,14 @@ const exerciseName = computed(() =>
     : '',
 );
 
-const weightStr = ref('');
-const repsStr = ref('');
-const weightFieldRef = ref<{ focus: () => void } | null>(null);
+const prevSession = computed(() => {
+  if (!sheet.value.exerciseId) return null;
+  const history = workoutStore.getExerciseHistory(sheet.value.exerciseId);
+  const pastSessions = history.filter((h) => h.date !== sheet.value.date);
+  if (!pastSessions.length) return null;
+  const last = pastSessions[pastSessions.length - 1];
+  return last?.bestSet ?? null;
+});
 
 watch(
   () => sheet.value.show,
@@ -107,15 +116,6 @@ watch(
     }
   },
 );
-
-const prevSession = computed(() => {
-  if (!sheet.value.exerciseId) return null;
-  const history = workoutStore.getExerciseHistory(sheet.value.exerciseId);
-  const pastSessions = history.filter((h) => h.date !== sheet.value.date);
-  if (!pastSessions.length) return null;
-  const last = pastSessions[pastSessions.length - 1];
-  return last?.bestSet ?? null;
-});
 
 function confirm() {
   const weight = parseFloat(weightStr.value) || 0;

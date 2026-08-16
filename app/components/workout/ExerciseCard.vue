@@ -77,8 +77,6 @@ import type { Exercise, WorkoutExercise, SetEntry } from '~~/types';
 import { useWorkoutStore } from '@/stores/workout';
 import { isBodyweight } from '@/utils/format';
 
-const { t } = useI18n();
-
 const props = defineProps<{
   exercise: Exercise;
   workoutExercise: WorkoutExercise;
@@ -91,6 +89,7 @@ defineEmits<{
   deleteExercise: [];
 }>();
 
+const { t } = useI18n();
 const workoutStore = useWorkoutStore();
 
 const prWeight = computed(() => {

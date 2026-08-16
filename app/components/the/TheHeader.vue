@@ -36,10 +36,10 @@ import { useSettingsStore } from '@/stores/settings';
 import { formatDate, isToday, formatShortDate } from '@/utils/date';
 
 const route = useRoute();
+const { t, locale } = useI18n();
 const uiStore = useUiStore();
 const workoutStore = useWorkoutStore();
 const settingsStore = useSettingsStore();
-const { t, locale } = useI18n();
 
 const showCalendar = ref(false);
 const showSidebar = ref(false);

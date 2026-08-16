@@ -22,8 +22,8 @@
 <script setup lang="ts">
 import { useUiStore } from '@/stores/ui';
 
-const uiStore = useUiStore();
 const { t } = useI18n();
+const uiStore = useUiStore();
 
 const timerDisplay = computed(() => {
   const s = uiStore.restTimer.remaining;

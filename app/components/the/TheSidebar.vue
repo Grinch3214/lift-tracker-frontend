@@ -58,8 +58,8 @@ defineEmits<{
   'update:show': [value: boolean];
 }>();
 
-const settingsStore = useSettingsStore();
 const { locale, locales, setLocale } = useI18n();
+const settingsStore = useSettingsStore();
 </script>
 
 <style scoped lang="scss">

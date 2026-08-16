@@ -71,9 +71,9 @@ import { getExercisesByMuscleGroup } from '@/utils/exercises';
 import { formatDate } from '@/utils/date';
 import { pluralize } from '@/utils/pluralize';
 
+const { t } = useI18n();
 const uiStore = useUiStore();
 const workoutStore = useWorkoutStore();
-const { t } = useI18n();
 
 const selectedGroup = ref<MuscleGroup | null>(null);
 const selectedIds = ref<Set<string>>(new Set());
@@ -102,15 +102,12 @@ function resetSelection() {
 }
 
 function confirmSelection() {
-  console.log('--------------------------');
   const date = formatDate(uiStore.selectedDate);
   const count = selectedIds.value.size;
   selectedIds.value.forEach((id) => workoutStore.addExercise(date, id));
 
   uiStore.exercisePicker.show = false;
-  console.log(111111111111111);
   resetSelection();
-  console.log(222222222222222);
   showSuccessToast(`${t('exercisePicker.added')} · ${count}`);
 }
 </script>

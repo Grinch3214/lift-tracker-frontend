@@ -18,7 +18,6 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
 import type { Workout } from '~~/types';
 import { useUiStore } from '@/stores/ui';
 import { parseDate, formatWeekdayLabel } from '@/utils/date';
@@ -26,8 +25,8 @@ import { getExerciseById } from '@/utils/exercises';
 import { pluralize } from '@/utils/pluralize';
 
 const props = defineProps<{ workout: Workout }>();
-const uiStore = useUiStore();
 const { t, locale } = useI18n();
+const uiStore = useUiStore();
 
 const date = computed(() => parseDate(props.workout.date));
 

@@ -38,9 +38,9 @@ import { getExerciseById } from '@/utils/exercises';
 import { formatDate, addDays } from '@/utils/date';
 import { pluralize } from '@/utils/pluralize';
 
+const { t } = useI18n();
 const workoutStore = useWorkoutStore();
 const uiStore = useUiStore();
-const { t } = useI18n();
 
 const pageEl = ref<HTMLElement | null>(null);
 const swipeDirection = ref<'left' | 'right'>('left');
