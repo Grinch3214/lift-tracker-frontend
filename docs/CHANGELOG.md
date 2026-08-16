@@ -133,3 +133,18 @@
 ### Notes
 
 - Two gotchas from this work are documented in `CLAUDE.md` rather than here: nested-reactive-array tracking (`index.vue`'s `useSortable` working copy) and vue-i18n parsing a literal `|` as its plural separator even through plain `t()`.
+
+## 2026-08-16
+
+### Changed
+
+- Chest catalog expanded from 6 to 25 exercises (barbell/dumbbell/Smith-machine variants for flat/incline/decline press, lever crossover, hammer press, pec deck, cable crossover variants, pullover variants, etc.) — the old placeholder list is gone, ids `bench-press`/`incline-bench-press`/`dumbbell-press` no longer exist (breaks any saved workout referencing them, fine pre-launch).
+- Two new equipment tags: `smith-machine`, `hammer`.
+- `<script setup>` field order standardized across all components (see `CLAUDE.md`): imports → props → emits → router/Nuxt composables (`useHead`, `useI18n`, etc.) → our own Pinia stores → component logic → `defineExpose` → lifecycle hooks.
+- `AddSetSheet.vue` is a centered popup instead of a bottom-sheet drawer; autofocuses the weight field on open.
+- Exercise-card spacing uses a single `gap` on the list container instead of per-card margin.
+- `TheSidebar.vue`: locale buttons moved next to the close icon (circular, matches the color swatches), color-picker row scrolls horizontally with its native scrollbar hidden.
+
+### Fixed
+
+- Leftover debug `console.log`s in `ExercisePicker.vue` removed.
