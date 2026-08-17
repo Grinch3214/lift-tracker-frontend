@@ -33,7 +33,6 @@
   },
   "exercisePicker": {
     "selectTitle": "Выберите упражнение",
-    "back": "← Назад",
     "addSelected": "Добавить",
     "added": "Добавлено",
     "newGroupTitle": "Новая группа",

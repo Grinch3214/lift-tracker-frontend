@@ -33,7 +33,6 @@
   },
   "exercisePicker": {
     "selectTitle": "Select Exercise",
-    "back": "← Back",
     "addSelected": "Add",
     "added": "Added",
     "newGroupTitle": "New Group",

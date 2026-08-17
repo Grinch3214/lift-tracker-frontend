@@ -1,17 +1,20 @@
 <template>
   <div class="exercise-card">
     <div class="exercise-card__header">
-      <div class="exercise-card__meta">
-        <span class="exercise-card__name">{{
-          exerciseName(exercise, t)
-        }}</span>
-        <van-tag
-          v-if="exercise.equipment"
-          plain
-          class="exercise-card__equipment-tag"
-        >
-          {{ t(`units.equipment.${exercise.equipment}`) }}
-        </van-tag>
+      <div class="exercise-card__title-row">
+        <van-icon name="bars" size="16" color="#888" class="exercise-card__drag-handle" />
+        <div class="exercise-card__meta">
+          <span class="exercise-card__name">{{
+            exerciseName(exercise, t)
+          }}</span>
+          <van-tag
+            v-if="exercise.equipment"
+            plain
+            class="exercise-card__equipment-tag"
+          >
+            {{ t(`units.equipment.${exercise.equipment}`) }}
+          </van-tag>
+        </div>
       </div>
       <van-icon
         name="delete-o"
@@ -153,6 +156,17 @@ function isPR(set: SetEntry): boolean {
     align-items: center;
     justify-content: space-between;
     padding: 14px 14px 10px;
+  }
+
+  &__title-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  &__drag-handle {
+    flex-shrink: 0;
   }
 
   &__meta {

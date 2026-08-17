@@ -158,12 +158,14 @@
 - Exercises now log either weight+reps or time+distance, chosen per exercise (`Exercise.trackingType`) — `AddSetSheet.vue` shows the matching pair of fields, `ExerciseCard.vue` shows matching table columns. See `CLAUDE.md` for the full shape.
 - Users can create their own muscle groups and exercises from the exercise picker ("+" next to the close icon — add-group when browsing groups, add-exercise once inside one, with a name, equipment tag, and weight-reps/time-distance choice). Persisted separately from the built-in catalog (`app/stores/catalog.ts`), never touching the static seed data. Custom names are shown as typed, not run through i18n (no translation key exists for them).
 - Custom exercises/groups can be edited and deleted — swipe a custom cell in the picker to reveal Edit/Delete. Built-in catalog entries can't be touched (by design, see `CLAUDE.md`). Deleting is a soft-delete: it disappears from the picker but past workouts that used it keep displaying correctly.
+- The exercise picker's muscle-group list and each group's exercise list are drag-and-drop reorderable — unlike edit/delete, this covers built-in entries too, not just custom ones (e.g. drag "Ноги" above "Грудь"). Order is stored separately from the entries themselves (`catalogStore.groupOrder`/`exerciseOrder`), since built-in entries have no per-user field to hold a custom position.
 
 ### Changed
 
 - `workoutStore.addSet`/`updateSet` take a `values` object instead of positional `weight, reps` args.
 - PR badge and the add-set popup's "last session" hint don't apply to time-distance exercises (not computed at all, not just hidden).
-- `ExercisePicker.vue` now builds its own header (title + "+" + close) instead of using `van-action-sheet`'s built-in one, to fit the new "+" button.
+- `ExercisePicker.vue` now builds its own header (title + "+" + close) instead of using `van-action-sheet`'s built-in one, to fit the new "+" button; the text "← Назад" link inside a group is now a back-arrow icon in the header instead.
+- Exercise cards show a small "☰" icon on the left as a visual hint that they're drag-reorderable — purely a hint, doesn't change the drag target (still the whole card).
 
 ### Notes
 

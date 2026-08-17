@@ -1,6 +1,11 @@
 import { defineStore } from 'pinia';
 import { useStorage } from '@vueuse/core';
-import type { MuscleGroup, Exercise, EquipmentType, TrackingType } from '~~/types';
+import type {
+  MuscleGroup,
+  Exercise,
+  EquipmentType,
+  TrackingType,
+} from '~~/types';
 import { generateId } from '@/utils/id';
 
 export const useCatalogStore = defineStore('catalog', () => {
@@ -11,6 +16,11 @@ export const useCatalogStore = defineStore('catalog', () => {
   const customExercises = useStorage<Exercise[]>(
     'lift-tracker-custom-exercises',
     [],
+  );
+  const groupOrder = useStorage<string[]>('lift-tracker-group-order', []);
+  const exerciseOrder = useStorage<Record<string, string[]>>(
+    'lift-tracker-exercise-order',
+    {},
   );
 
   function addMuscleGroup(name: string): MuscleGroup {
@@ -38,8 +48,6 @@ export const useCatalogStore = defineStore('catalog', () => {
       equipment,
       trackingType,
     };
-    // Unshift, not push - a freshly-added exercise should show at the top of
-    // its muscle group's list instead of being buried at the bottom.
     customExercises.value.unshift(exercise);
     return exercise;
   }
@@ -75,14 +83,29 @@ export const useCatalogStore = defineStore('catalog', () => {
     exercise.isDeleted = true;
   }
 
+  function reorderMuscleGroups(orderedIds: string[]): void {
+    groupOrder.value = orderedIds;
+  }
+
+  function reorderExercises(muscleGroupId: string, orderedIds: string[]): void {
+    exerciseOrder.value = {
+      ...exerciseOrder.value,
+      [muscleGroupId]: orderedIds,
+    };
+  }
+
   return {
     customMuscleGroups,
     customExercises,
+    groupOrder,
+    exerciseOrder,
     addMuscleGroup,
     addExercise,
     updateMuscleGroup,
     deleteMuscleGroup,
     updateExercise,
     deleteExercise,
+    reorderMuscleGroups,
+    reorderExercises,
   };
 });

@@ -2,15 +2,27 @@ import type { Exercise, MuscleGroup } from '~~/types';
 import { muscleGroups, exercises } from '@/data/muscle-groups';
 import { useCatalogStore } from '@/stores/catalog';
 
-// Picker-facing: excludes soft-deleted custom entries, since those shouldn't be
-// selectable for new workouts. getExerciseById/getMuscleGroupById below deliberately
-// do NOT filter isDeleted - past workouts still need to resolve them by id.
+function applyOrder<T extends { id: string }>(
+  items: T[],
+  order: string[],
+): T[] {
+  if (!order.length) return items;
+  const byId = new Map(items.map((item) => [item.id, item]));
+  const ordered = order
+    .map((id) => byId.get(id))
+    .filter((item): item is T => item !== undefined);
+  const orderedIds = new Set(order);
+  const rest = items.filter((item) => !orderedIds.has(item.id));
+  return [...ordered, ...rest];
+}
+
 export function getAllMuscleGroups(): MuscleGroup[] {
   const catalogStore = useCatalogStore();
-  return [
+  const all = [
     ...muscleGroups,
     ...catalogStore.customMuscleGroups.filter((group) => !group.isDeleted),
   ];
+  return applyOrder(all, catalogStore.groupOrder);
 }
 
 export function getExerciseById(id: string): Exercise | undefined {
@@ -32,17 +44,16 @@ export function getMuscleGroupById(id: string): MuscleGroup | undefined {
 export function getExercisesByMuscleGroup(muscleGroupId: string): Exercise[] {
   const catalogStore = useCatalogStore();
   const custom = catalogStore.customExercises.filter(
-    (exercise) => exercise.muscleGroupId === muscleGroupId && !exercise.isDeleted,
+    (exercise) =>
+      exercise.muscleGroupId === muscleGroupId && !exercise.isDeleted,
   );
   const builtin = exercises.filter(
     (exercise) => exercise.muscleGroupId === muscleGroupId,
   );
-  return [...custom, ...builtin];
+  const all = [...custom, ...builtin];
+  return applyOrder(all, catalogStore.exerciseOrder[muscleGroupId] ?? []);
 }
 
-// Catalog names are translated via t(`catalog.exercises.${id}`) / t(`catalog.muscleGroups.${id}`) -
-// custom entries have no translation key (the user typed the name themselves), so they fall back
-// to the raw `name` field instead, which for built-in entries is just an untranslated dev fallback.
 export function exerciseName(
   exercise: Exercise,
   t: (key: string) => string,

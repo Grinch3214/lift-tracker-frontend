@@ -6,7 +6,16 @@
     @closed="resetSelection"
   >
     <div class="exercise-picker__header">
-      <span class="exercise-picker__title">{{ headerTitle }}</span>
+      <div class="exercise-picker__title-row">
+        <van-icon
+          v-if="selectedGroup"
+          name="arrow-left"
+          size="18"
+          class="exercise-picker__back-icon"
+          @click="resetSelection"
+        />
+        <span class="exercise-picker__title">{{ headerTitle }}</span>
+      </div>
       <div class="exercise-picker__header-actions">
         <van-icon name="plus" size="18" @click="openAddModal" />
         <van-icon
@@ -23,16 +32,12 @@
         :class="{ 'has-footer': selectedIds.size > 0 }"
       >
         <div
-          v-if="selectedGroup"
-          class="exercise-picker__back-btn"
-          @click="resetSelection"
+          v-if="!selectedGroup"
+          ref="groupListEl"
+          class="exercise-picker__list"
         >
-          {{ t('exercisePicker.back') }}
-        </div>
-
-        <van-list v-if="!selectedGroup">
           <van-swipe-cell
-            v-for="group in allMuscleGroups"
+            v-for="group in groupItems"
             :key="group.id"
             :disabled="!group.isCustom"
           >
@@ -59,11 +64,11 @@
               />
             </template>
           </van-swipe-cell>
-        </van-list>
+        </div>
 
-        <van-list v-else>
+        <div v-else ref="exerciseListEl" class="exercise-picker__list">
           <van-swipe-cell
-            v-for="exercise in currentGroupExercises"
+            v-for="exercise in exerciseItems"
             :key="exercise.id"
             :disabled="!exercise.isCustom"
           >
@@ -96,7 +101,7 @@
               />
             </template>
           </van-swipe-cell>
-        </van-list>
+        </div>
       </div>
 
       <div v-if="selectedIds.size > 0" class="exercise-picker__footer">
@@ -125,6 +130,7 @@ import type { MuscleGroup, Exercise } from '~~/types';
 import { useUiStore } from '@/stores/ui';
 import { useWorkoutStore } from '@/stores/workout';
 import { useCatalogStore } from '@/stores/catalog';
+import { useSortable } from '@vueuse/integrations/useSortable';
 import {
   getAllMuscleGroups,
   getExercisesByMuscleGroup,
@@ -146,13 +152,74 @@ const showAddExerciseModal = ref(false);
 const editingGroup = ref<MuscleGroup | null>(null);
 const editingExercise = ref<Exercise | null>(null);
 
-const allMuscleGroups = computed(() => getAllMuscleGroups());
-
-const currentGroupExercises = computed(() =>
-  selectedGroup.value
-    ? getExercisesByMuscleGroup(selectedGroup.value.id)
-    : [],
+// Local working copies useSortable can freely reorder while dragging - same "id-set
+// comparison to avoid ping-ponging with the persist watcher" pattern as index.vue's
+// drag-and-drop for the day's exercise list, see CLAUDE.md for why.
+const storedMuscleGroups = computed(() => getAllMuscleGroups());
+const groupItems = ref<MuscleGroup[]>([]);
+watch(
+  storedMuscleGroups,
+  (val) => {
+    const currentIds = groupItems.value
+      .map((g) => g.id)
+      .sort()
+      .join(',');
+    const newIds = val
+      .map((g) => g.id)
+      .sort()
+      .join(',');
+    if (currentIds !== newIds) groupItems.value = [...val];
+  },
+  { immediate: true },
 );
+
+const groupListEl = ref<HTMLElement | null>(null);
+useSortable(groupListEl, groupItems, {
+  watchElement: true,
+  delay: 150,
+  delayOnTouchOnly: true,
+  animation: 150,
+});
+
+watch(groupItems, (val) => {
+  catalogStore.reorderMuscleGroups(val.map((g) => g.id));
+});
+
+const storedGroupExercises = computed(() =>
+  selectedGroup.value ? getExercisesByMuscleGroup(selectedGroup.value.id) : [],
+);
+const exerciseItems = ref<Exercise[]>([]);
+watch(
+  storedGroupExercises,
+  (val) => {
+    const currentIds = exerciseItems.value
+      .map((e) => e.id)
+      .sort()
+      .join(',');
+    const newIds = val
+      .map((e) => e.id)
+      .sort()
+      .join(',');
+    if (currentIds !== newIds) exerciseItems.value = [...val];
+  },
+  { immediate: true },
+);
+
+const exerciseListEl = ref<HTMLElement | null>(null);
+useSortable(exerciseListEl, exerciseItems, {
+  watchElement: true,
+  delay: 150,
+  delayOnTouchOnly: true,
+  animation: 150,
+});
+
+watch(exerciseItems, (val) => {
+  if (!selectedGroup.value) return;
+  catalogStore.reorderExercises(
+    selectedGroup.value.id,
+    val.map((e) => e.id),
+  );
+});
 
 const headerTitle = computed(() =>
   selectedGroup.value
@@ -245,8 +312,13 @@ function confirmSelection() {
   height: 80%;
   display: flex;
   flex-direction: column;
+  position: relative;
 
   &__header {
+    position: sticky;
+    inset-block-start: 0;
+    background: var(--van-cell-background);
+    z-index: 10;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -254,10 +326,21 @@ function confirmSelection() {
     border-block-end: 1px solid var(--van-border-color);
   }
 
+  &__title-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
   &__title {
     font-size: 16px;
     font-weight: 600;
     color: var(--van-text-color);
+  }
+
+  &__back-icon {
+    cursor: pointer;
+    color: var(--van-text-color-2);
   }
 
   &__header-actions {
@@ -283,20 +366,28 @@ function confirmSelection() {
     }
   }
 
-  &__back-btn {
-    padding: 12px 16px;
-    cursor: pointer;
-    color: var(--van-primary-color);
-    font-size: 14px;
-    font-weight: 600;
+  &__list {
+    display: flex;
+    flex-direction: column;
+
+    :deep(.van-cell__title),
+    :deep(.van-cell__value) {
+      user-select: none;
+    }
   }
 
   &__swipe-btn {
     height: 100%;
   }
 
-  &__exercise-cell.is-selected {
-    background: rgb(var(--van-primary-color-channels) / 12%);
+  &__exercise-cell {
+    &.is-selected {
+      background: rgb(var(--van-primary-color-channels) / 12%);
+    }
+
+    :deep(.van-cell__title) {
+      user-select: none;
+    }
   }
 
   &__footer {
