@@ -1,5 +1,6 @@
 export { type MuscleGroup } from './muscle-group';
 export { type EquipmentType } from './equipment-type';
+export { type TrackingType } from './tracking-type';
 export { type Exercise } from './exercise';
 export { type Workout } from './workout';
 export { type WorkoutExercise } from './workout-exercise';

@@ -16,13 +16,17 @@
     "setsHeaderSet": "№",
     "setsHeaderWeight": "Вес",
     "setsHeaderReps": "Повторы",
-    "setsHeaderVol": "Объём"
+    "setsHeaderVol": "Объём",
+    "setsHeaderDuration": "Время",
+    "setsHeaderDistance": "Дистанция"
   },
   "addSetSheet": {
     "editTitle": "Редактировать подход",
     "addTitle": "Добавить подход",
     "weightLabel": "Вес (кг)",
     "repsLabel": "Повторы",
+    "durationLabel": "Время (мин)",
+    "distanceLabel": "Дистанция (км)",
     "lastSession": "Последний раз: {weight} × {reps} повторов",
     "cancel": "Отмена",
     "save": "Сохранить"
@@ -42,6 +46,8 @@
   },
   "units": {
     "kg": "кг",
+    "km": "км",
+    "min": "мин",
     "bodyweight": "СВ",
     "countWord": "{count} {word}",
     "exerciseWordOne": "упражнение",
@@ -70,7 +76,8 @@
       "shoulders": "Плечи",
       "arms": "Руки",
       "legs": "Ноги",
-      "core": "Пресс"
+      "core": "Пресс",
+      "cardio": "Кардио"
     },
     "exercises": {
       "bench-press-barbell": "Жим лёжа (штанга)",
@@ -125,7 +132,16 @@
       "plank": "Планка",
       "crunch": "Скручивания",
       "leg-raise": "Подъём ног",
-      "cable-crunch": "Скручивания на блоке"
+      "cable-crunch": "Скручивания на блоке",
+      "burpee": "Бёрпи",
+      "mountain-climber": "Скалолаз",
+      "battle-ropes": "Волны с канатами",
+      "treadmill": "Беговая дорожка",
+      "stationary-bike": "Велосипед",
+      "stepper": "Степпер",
+      "stair-climber": "Лестница-степпер",
+      "elliptical": "Эллипсоид",
+      "rowing-machine": "Гребля"
     }
   }
 }

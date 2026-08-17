@@ -61,8 +61,11 @@ app/utils/id.ts             ← generateId() — crypto.randomUUID() when availa
                               the first id-generating action. Always use this helper, never call
                               crypto.randomUUID() directly.
 
-app/data/muscle-groups.ts  ← static seed data: 6 muscle groups, ~35 exercises (id, name, muscleGroupId, equipment).
-                              `name` here is an English dev fallback only — never rendered directly, see i18n below.
+app/data/muscle-groups.ts  ← static seed data: 7 muscle groups (incl. Cardio), 62 exercises (id, name, muscleGroupId,
+                              equipment, trackingType). `name` here is an English dev fallback only — never
+                              rendered directly, see i18n below. Being filled in for real muscle-group by
+                              muscle-group (chest + cardio done); the rest still hold the original ~6-per-group
+                              placeholder set from the initial rebuild.
 app/utils/exercises.ts     ← lookups over the static catalog: getExerciseById, getMuscleGroupById, getExercisesByMuscleGroup
 app/utils/date.ts          ← formatDate/parseDate ('YYYY-MM-DD' string <-> Date), isToday, formatDateLabel/formatWeekdayLabel (locale-aware, take a locale string), addDays
 app/utils/format.ts        ← isBodyweight(weight) — the "kg"/"BW" text itself comes from translations, not from this util
@@ -73,9 +76,13 @@ app/stores/workout.ts      ← THE store. workouts: Workout[] persisted via useS
                               (always creates a new WorkoutExercise, even if that exerciseId is already logged
                               that day — intentional, e.g. same exercise at the start and end of a session),
                               removeExercise, reorderExercises(date, orderedIds) (persists drag-and-drop order,
-                              re-syncs WorkoutExercise.order to match), addSet, updateSet, removeSet. Also
-                              getExerciseHistory(exerciseId) (aggregates sets across ALL same-day entries for
-                              that exerciseId, not just the first match — matters now that duplicates exist)
+                              re-syncs WorkoutExercise.order to match), addSet(date, workoutExerciseId, values),
+                              updateSet(date, workoutExerciseId, setId, values) — values is a partial
+                              {weight?, reps?, durationSeconds?, distanceKm?}, not positional args, since which
+                              pair is populated depends on the exercise's trackingType (see below), removeSet.
+                              Also getExerciseHistory(exerciseId) (aggregates sets across ALL same-day entries
+                              for that exerciseId, not just the first match — matters now that duplicates
+                              exist; treats missing weight/reps as 0 rather than assuming every set has them)
                               and getPersonalRecord(exerciseId) — used for the PR badge and the "last session"
                               hint in the add-set popup.
 app/stores/ui.ts           ← UI-only state, not persisted: selectedDate (drives which day is shown on Workout page),
@@ -127,6 +134,12 @@ Global popups (`WorkoutExercisePicker`, `WorkoutAddSetSheet`) are mounted once i
 **Vant's `showConfirmDialog` rejects its promise when the user cancels.** `removeSet`/`removeExercise` in `index.vue` both `await` it — wrap in try/catch (return on catch) or cancelling throws an unhandled rejection in the console. Any new destructive-action confirmation should follow the same try/catch shape.
 
 **PR badge is per-set-id, not per-weight.** `ExerciseCard.vue`'s `isPR`/`prSetId` must flag only the *last* set that reaches the record weight, never every tied set.
+
+**Not every exercise logs weight+reps.** `Exercise.trackingType` is `'weight-reps'` (the default — barbell/dumbbell/machine/bodyweight work) or `'time-distance'` (cardio machines: treadmill, bike, stepper, stair climber, elliptical, rowing machine). `SetEntry`'s four value fields (`weight`, `reps`, `durationSeconds`, `distanceKm`) are all optional — only the pair matching the parent exercise's `trackingType` is ever populated; nothing enforces this at the type level (a plain interface, not a discriminated union — deliberate, matches how the rest of the app trusts the store as the single mutation entry point rather than leaning on type-level exhaustiveness). Bodyweight cardio moves (burpee, mountain climber, battle ropes) are `'weight-reps'` like push-ups, not `'time-distance'` — only the true distance/duration machines get the other mode. Consequences to keep in mind when touching sets:
+- `AddSetSheet.vue` branches its whole input row (and which field autofocuses) on `trackingType`; duration is entered in **minutes** in the UI but stored as `durationSeconds` (×60) for future precision.
+- `workoutStore.addSet`/`updateSet` take a `values` object, not positional args, for exactly this reason.
+- Anywhere that reads `set.weight`/`set.reps` for aggregate math (volume sums, PR, `getExerciseHistory`) must use `?? 0`, not assume they exist — a mixed day (some weight-reps exercises, some time-distance) means `undefined * undefined` would otherwise corrupt totals silently.
+- PR and the "last session" hint are intentionally **not computed for `time-distance` exercises** — `ExerciseCard.vue`'s `prWeight` and `AddSetSheet.vue`'s `prevSession` both short-circuit to `0`/`null` on that trackingType. A time-distance-appropriate PR (best pace? longest distance?) is a deliberately deferred, separate design question, not an oversight.
 
 **A computed that only reads a property (not `.length`/an iteration) on a nested reactive array won't react to `.push()`/`.splice()` on it.** `workoutStore.getWorkoutByDate(date)?.exercises` is a plain property read — Vue tracks "did `.exercises` get reassigned", not "did its contents change". `index.vue`'s `storedExercises` computed spreads it (`[...workout.exercises]`) specifically to force the iteration that makes push/splice mutations (e.g. `addExercise`) actually invalidate it. This bit only in a scenario with an intermediate `ref` feeding `useSortable` (see below) — a bare `v-for="we in exercises"` directly over a computed doesn't need this, because `v-for`'s own iteration during render establishes the same tracking implicitly.
 

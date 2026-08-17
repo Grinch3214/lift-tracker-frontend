@@ -13,6 +13,8 @@ export const useUiStore = defineStore('ui', () => {
     setId: null,
     defaultWeight: 0,
     defaultReps: 0,
+    defaultDurationSeconds: 0,
+    defaultDistanceKm: 0,
   });
 
   const exercisePicker = ref({ show: false });

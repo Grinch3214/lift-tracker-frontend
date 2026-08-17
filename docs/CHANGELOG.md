@@ -148,3 +148,20 @@
 ### Fixed
 
 - Leftover debug `console.log`s in `ExercisePicker.vue` removed.
+
+## 2026-08-17
+
+### Added
+
+- Chest catalog expanded to 25 exercises (barbell/dumbbell/Smith-machine variants of flat/incline/decline press, lever crossover, hammer press, pec deck, cable-crossover variants, pullover variants, etc.); two new equipment tags, `smith-machine` and `hammer`.
+- New "Cardio" muscle group, 9 exercises: bodyweight/rep-based ones (burpee, mountain climber, battle ropes) plus 6 duration/distance machines (treadmill, stationary bike, stepper, stair climber, elliptical, rowing machine).
+- Exercises now log either weight+reps or time+distance, chosen per exercise (`Exercise.trackingType`) — `AddSetSheet.vue` shows the matching pair of fields, `ExerciseCard.vue` shows matching table columns. See `CLAUDE.md` for the full shape.
+
+### Changed
+
+- `workoutStore.addSet`/`updateSet` take a `values` object instead of positional `weight, reps` args.
+- PR badge and the add-set popup's "last session" hint don't apply to time-distance exercises (not computed at all, not just hidden).
+
+### Notes
+
+- Chest/Cardio are the only muscle groups filled in with real data so far — the rest still hold the original small placeholder set.

@@ -111,7 +111,9 @@ const totalSets = computed(() =>
 
 const totalVolume = computed(() =>
   exercises.value.reduce(
-    (sum, ex) => sum + ex.sets.reduce((s, set) => s + set.weight * set.reps, 0),
+    (sum, ex) =>
+      sum +
+      ex.sets.reduce((s, set) => s + (set.weight ?? 0) * (set.reps ?? 0), 0),
     0,
   ),
 );
@@ -157,6 +159,8 @@ function openAddSet(we: WorkoutExercise) {
     setId: null,
     defaultWeight: lastSet?.weight ?? 0,
     defaultReps: lastSet?.reps ?? 0,
+    defaultDurationSeconds: lastSet?.durationSeconds ?? 0,
+    defaultDistanceKm: lastSet?.distanceKm ?? 0,
   };
 }
 
@@ -167,8 +171,10 @@ function openEditSet(we: WorkoutExercise, set: SetEntry) {
     workoutExerciseId: we.id,
     exerciseId: we.exerciseId,
     setId: set.id,
-    defaultWeight: set.weight,
-    defaultReps: set.reps,
+    defaultWeight: set.weight ?? 0,
+    defaultReps: set.reps ?? 0,
+    defaultDurationSeconds: set.durationSeconds ?? 0,
+    defaultDistanceKm: set.distanceKm ?? 0,
   };
 }
 

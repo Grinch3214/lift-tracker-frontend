@@ -79,11 +79,15 @@ export const useWorkoutStore = defineStore('workout', () => {
     });
   }
 
+  type SetValues = Pick<
+    SetEntry,
+    'weight' | 'reps' | 'durationSeconds' | 'distanceKm'
+  >;
+
   function addSet(
     date: string,
     workoutExerciseId: string,
-    weight: number,
-    reps: number,
+    values: SetValues,
   ): void {
     const workout = getWorkoutByDate(date);
     const exercise = workout?.exercises.find((e) => e.id === workoutExerciseId);
@@ -91,8 +95,7 @@ export const useWorkoutStore = defineStore('workout', () => {
 
     exercise.sets.push({
       id: generateId(),
-      weight,
-      reps,
+      ...values,
       isCompleted: true,
     });
   }
@@ -101,16 +104,14 @@ export const useWorkoutStore = defineStore('workout', () => {
     date: string,
     workoutExerciseId: string,
     setId: string,
-    weight: number,
-    reps: number,
+    values: SetValues,
   ): void {
     const workout = getWorkoutByDate(date);
     const exercise = workout?.exercises.find((e) => e.id === workoutExerciseId);
     const set = exercise?.sets.find((s) => s.id === setId);
     if (!set) return;
 
-    set.weight = weight;
-    set.reps = reps;
+    Object.assign(set, values);
   }
 
   function removeSet(
@@ -138,11 +139,16 @@ export const useWorkoutStore = defineStore('workout', () => {
           .filter((e) => e.exerciseId === exerciseId)
           .flatMap((e) => e.sets);
         const maxWeight =
-          sets.length > 0 ? Math.max(...sets.map((s) => s.weight)) : 0;
-        const totalVolume = sets.reduce((sum, s) => sum + s.weight * s.reps, 0);
+          sets.length > 0 ? Math.max(...sets.map((s) => s.weight ?? 0)) : 0;
+        const totalVolume = sets.reduce(
+          (sum, s) => sum + (s.weight ?? 0) * (s.reps ?? 0),
+          0,
+        );
         const bestSet =
           sets.length > 0
-            ? sets.reduce((best, s) => (s.weight > best.weight ? s : best))
+            ? sets.reduce((best, s) =>
+                (s.weight ?? 0) > (best.weight ?? 0) ? s : best,
+              )
             : null;
         return {
           workoutId: workout.id,
@@ -165,11 +171,10 @@ export const useWorkoutStore = defineStore('workout', () => {
     let pr = { weight: 0, reps: 0, date: '' };
     history.forEach((entry) => {
       entry.sets.forEach((set) => {
-        if (
-          set.weight > pr.weight ||
-          (set.weight === pr.weight && set.reps > pr.reps)
-        ) {
-          pr = { weight: set.weight, reps: set.reps, date: entry.date };
+        const weight = set.weight ?? 0;
+        const reps = set.reps ?? 0;
+        if (weight > pr.weight || (weight === pr.weight && reps > pr.reps)) {
+          pr = { weight, reps, date: entry.date };
         }
       });
     });

@@ -22,7 +22,14 @@
       />
     </div>
 
-    <div class="exercise-card__sets-header">
+    <div v-if="isTimeDistance" class="exercise-card__sets-header">
+      <span>{{ t('workout.setsHeaderSet') }}</span>
+      <span>{{ t('workout.setsHeaderDuration') }}</span>
+      <span>{{ t('workout.setsHeaderDistance') }}</span>
+      <span />
+      <span />
+    </div>
+    <div v-else class="exercise-card__sets-header">
       <span>{{ t('workout.setsHeaderSet') }}</span>
       <span>{{ t('workout.setsHeaderWeight') }}</span>
       <span>{{ t('workout.setsHeaderReps') }}</span>
@@ -38,18 +45,31 @@
       @click="$emit('editSet', set)"
     >
       <span class="exercise-card__set-num">{{ i + 1 }}</span>
-      <span class="exercise-card__set-weight">
-        {{
-          isBodyweight(set.weight)
-            ? t('units.bodyweight')
-            : `${set.weight} ${t('units.kg')}`
-        }}
-        <span v-if="isPR(set)" class="exercise-card__pr-badge">{{
-          t('workout.prBadge')
+      <template v-if="isTimeDistance">
+        <span class="exercise-card__set-weight">
+          {{ (set.durationSeconds ?? 0) / 60 }} {{ t('units.min') }}
+        </span>
+        <span class="exercise-card__set-reps">
+          {{ set.distanceKm ?? 0 }} {{ t('units.km') }}
+        </span>
+        <span class="exercise-card__set-vol" />
+      </template>
+      <template v-else>
+        <span class="exercise-card__set-weight">
+          {{
+            isBodyweight(set.weight ?? 0)
+              ? t('units.bodyweight')
+              : `${set.weight} ${t('units.kg')}`
+          }}
+          <span v-if="isPR(set)" class="exercise-card__pr-badge">{{
+            t('workout.prBadge')
+          }}</span>
+        </span>
+        <span class="exercise-card__set-reps">{{ set.reps }}</span>
+        <span class="exercise-card__set-vol">{{
+          (set.weight ?? 0) * (set.reps ?? 0)
         }}</span>
-      </span>
-      <span class="exercise-card__set-reps">{{ set.reps }}</span>
-      <span class="exercise-card__set-vol">{{ set.weight * set.reps }}</span>
+      </template>
       <van-icon
         name="cross"
         size="13"
@@ -92,7 +112,12 @@ defineEmits<{
 const { t } = useI18n();
 const workoutStore = useWorkoutStore();
 
+const isTimeDistance = computed(
+  () => props.exercise.trackingType === 'time-distance',
+);
+
 const prWeight = computed(() => {
+  if (isTimeDistance.value) return 0;
   const history = workoutStore.getExerciseHistory(props.exercise.id);
   if (!history.length) return 0;
   return Math.max(...history.map((h) => h.maxWeight));
@@ -102,7 +127,7 @@ const prWeight = computed(() => {
 const prSetId = computed(() => {
   if (prWeight.value <= 0) return null;
   const qualifying = props.workoutExercise.sets.filter(
-    (s) => s.weight > 0 && s.weight >= prWeight.value,
+    (s) => (s.weight ?? 0) > 0 && (s.weight ?? 0) >= prWeight.value,
   );
   return qualifying.length > 0 ? qualifying[qualifying.length - 1]!.id : null;
 });

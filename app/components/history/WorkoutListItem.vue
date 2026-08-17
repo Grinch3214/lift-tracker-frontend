@@ -59,7 +59,9 @@ const setsCountLabel = computed(() => {
 
 const totalVolume = computed(() =>
   props.workout.exercises.reduce(
-    (sum, e) => sum + e.sets.reduce((s, set) => s + set.weight * set.reps, 0),
+    (sum, e) =>
+      sum +
+      e.sets.reduce((s, set) => s + (set.weight ?? 0) * (set.reps ?? 0), 0),
     0,
   ),
 );

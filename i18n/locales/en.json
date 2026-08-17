@@ -16,13 +16,17 @@
     "setsHeaderSet": "#",
     "setsHeaderWeight": "Weight",
     "setsHeaderReps": "Reps",
-    "setsHeaderVol": "Vol"
+    "setsHeaderVol": "Vol",
+    "setsHeaderDuration": "Time",
+    "setsHeaderDistance": "Distance"
   },
   "addSetSheet": {
     "editTitle": "Edit Set",
     "addTitle": "Add Set",
     "weightLabel": "Weight (kg)",
     "repsLabel": "Reps",
+    "durationLabel": "Time (min)",
+    "distanceLabel": "Distance (km)",
     "lastSession": "Last session: {weight} × {reps} reps",
     "cancel": "Cancel",
     "save": "Save"
@@ -42,6 +46,8 @@
   },
   "units": {
     "kg": "kg",
+    "km": "km",
+    "min": "min",
     "bodyweight": "BW",
     "countWord": "{count} {word}",
     "exerciseWordOne": "exercise",
@@ -70,7 +76,8 @@
       "shoulders": "Shoulders",
       "arms": "Arms",
       "legs": "Legs",
-      "core": "Core"
+      "core": "Core",
+      "cardio": "Cardio"
     },
     "exercises": {
       "bench-press-barbell": "Barbell Bench Press",
@@ -125,7 +132,16 @@
       "plank": "Plank",
       "crunch": "Crunch",
       "leg-raise": "Leg Raise",
-      "cable-crunch": "Cable Crunch"
+      "cable-crunch": "Cable Crunch",
+      "burpee": "Burpee",
+      "mountain-climber": "Mountain Climber",
+      "battle-ropes": "Battle Ropes",
+      "treadmill": "Treadmill",
+      "stationary-bike": "Stationary Bike",
+      "stepper": "Stepper",
+      "stair-climber": "Stair Climber",
+      "elliptical": "Elliptical",
+      "rowing-machine": "Rowing Machine"
     }
   }
 }

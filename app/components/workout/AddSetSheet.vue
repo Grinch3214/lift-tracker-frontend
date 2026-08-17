@@ -13,7 +13,7 @@
       <van-icon name="clock-o" size="13" color="#888" />
       <span>{{
         t('addSetSheet.lastSession', {
-          weight: isBodyweight(prevSession.weight)
+          weight: isBodyweight(prevSession.weight ?? 0)
             ? t('units.bodyweight')
             : `${prevSession.weight} ${t('units.kg')}`,
           reps: prevSession.reps,
@@ -21,7 +21,35 @@
       }}</span>
     </div>
 
-    <div class="add-set-sheet__inputs-row">
+    <div v-if="isTimeDistance" class="add-set-sheet__inputs-row">
+      <div class="add-set-sheet__input-block">
+        <label class="add-set-sheet__input-label">{{
+          t('addSetSheet.durationLabel')
+        }}</label>
+        <van-field
+          ref="durationFieldRef"
+          v-model="durationStr"
+          type="number"
+          input-align="center"
+          placeholder="0"
+          class="add-set-sheet__set-input"
+        />
+      </div>
+      <div class="add-set-sheet__input-divider" />
+      <div class="add-set-sheet__input-block">
+        <label class="add-set-sheet__input-label">{{
+          t('addSetSheet.distanceLabel')
+        }}</label>
+        <van-field
+          v-model="distanceStr"
+          type="number"
+          input-align="center"
+          placeholder="0"
+          class="add-set-sheet__set-input"
+        />
+      </div>
+    </div>
+    <div v-else class="add-set-sheet__inputs-row">
       <div class="add-set-sheet__input-block">
         <label class="add-set-sheet__input-label">{{
           t('addSetSheet.weightLabel')
@@ -78,6 +106,7 @@
 import { useUiStore } from '@/stores/ui';
 import { useWorkoutStore } from '@/stores/workout';
 import { isBodyweight } from '@/utils/format';
+import { getExerciseById } from '@/utils/exercises';
 
 const { t } = useI18n();
 const uiStore = useUiStore();
@@ -85,9 +114,20 @@ const workoutStore = useWorkoutStore();
 
 const weightStr = ref('');
 const repsStr = ref('');
+const durationStr = ref('');
+const distanceStr = ref('');
 const weightFieldRef = ref<{ focus: () => void } | null>(null);
+const durationFieldRef = ref<{ focus: () => void } | null>(null);
 
 const sheet = computed(() => uiStore.addSetSheet);
+
+const exercise = computed(() =>
+  sheet.value.exerciseId ? getExerciseById(sheet.value.exerciseId) : null,
+);
+
+const isTimeDistance = computed(
+  () => exercise.value?.trackingType === 'time-distance',
+);
 
 const exerciseName = computed(() =>
   sheet.value.exerciseId
@@ -96,7 +136,7 @@ const exerciseName = computed(() =>
 );
 
 const prevSession = computed(() => {
-  if (!sheet.value.exerciseId) return null;
+  if (!sheet.value.exerciseId || isTimeDistance.value) return null;
   const history = workoutStore.getExerciseHistory(sheet.value.exerciseId);
   const pastSessions = history.filter((h) => h.date !== sheet.value.date);
   if (!pastSessions.length) return null;
@@ -112,30 +152,56 @@ watch(
         sheet.value.defaultWeight > 0 ? String(sheet.value.defaultWeight) : '';
       repsStr.value =
         sheet.value.defaultReps > 0 ? String(sheet.value.defaultReps) : '';
-      nextTick(() => weightFieldRef.value?.focus());
+      durationStr.value =
+        sheet.value.defaultDurationSeconds > 0
+          ? String(sheet.value.defaultDurationSeconds / 60)
+          : '';
+      distanceStr.value =
+        sheet.value.defaultDistanceKm > 0
+          ? String(sheet.value.defaultDistanceKm)
+          : '';
+      nextTick(() =>
+        isTimeDistance.value
+          ? durationFieldRef.value?.focus()
+          : weightFieldRef.value?.focus(),
+      );
     }
   },
 );
 
 function confirm() {
-  const weight = parseFloat(weightStr.value) || 0;
-  const reps = parseInt(repsStr.value) || 0;
-  if (reps === 0) return;
+  let values: {
+    weight?: number;
+    reps?: number;
+    durationSeconds?: number;
+    distanceKm?: number;
+  };
+
+  if (isTimeDistance.value) {
+    const durationMinutes = parseFloat(durationStr.value) || 0;
+    if (durationMinutes === 0) return;
+    values = {
+      durationSeconds: durationMinutes * 60,
+      distanceKm: parseFloat(distanceStr.value) || 0,
+    };
+  } else {
+    const reps = parseInt(repsStr.value) || 0;
+    if (reps === 0) return;
+    values = { weight: parseFloat(weightStr.value) || 0, reps };
+  }
 
   if (sheet.value.setId !== null) {
     workoutStore.updateSet(
       sheet.value.date,
       sheet.value.workoutExerciseId,
       sheet.value.setId,
-      weight,
-      reps,
+      values,
     );
   } else {
     workoutStore.addSet(
       sheet.value.date,
       sheet.value.workoutExerciseId,
-      weight,
-      reps,
+      values,
     );
     uiStore.startRestTimer(90);
   }

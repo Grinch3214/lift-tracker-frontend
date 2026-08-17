@@ -6,4 +6,6 @@ export interface AddSetSheetState {
   setId: string | null;
   defaultWeight: number;
   defaultReps: number;
+  defaultDurationSeconds: number;
+  defaultDistanceKm: number;
 }
