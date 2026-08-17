@@ -35,7 +35,22 @@
     "selectTitle": "Select Exercise",
     "back": "← Back",
     "addSelected": "Add",
-    "added": "Added"
+    "added": "Added",
+    "newGroupTitle": "New Group",
+    "groupNamePlaceholder": "Group name",
+    "newExerciseTitle": "New Exercise",
+    "exerciseNamePlaceholder": "Name",
+    "exerciseGroupLabel": "Group: {group}",
+    "equipmentLabel": "Equipment",
+    "trackingTypeLabel": "What to track",
+    "trackingTypeWeightReps": "Weight & reps",
+    "trackingTypeTimeDistance": "Time & distance",
+    "add": "Add",
+    "edit": "Edit",
+    "editGroupTitle": "Edit Group",
+    "editExerciseTitle": "Edit Exercise",
+    "deleteGroupTitle": "Delete group?",
+    "deleteExerciseTitle": "Delete exercise?"
   },
   "history": {
     "empty": "No workouts logged yet",

@@ -35,7 +35,22 @@
     "selectTitle": "Выберите упражнение",
     "back": "← Назад",
     "addSelected": "Добавить",
-    "added": "Добавлено"
+    "added": "Добавлено",
+    "newGroupTitle": "Новая группа",
+    "groupNamePlaceholder": "Название группы",
+    "newExerciseTitle": "Новое упражнение",
+    "exerciseNamePlaceholder": "Название",
+    "exerciseGroupLabel": "Группа: {group}",
+    "equipmentLabel": "Оборудование",
+    "trackingTypeLabel": "Что записываем",
+    "trackingTypeWeightReps": "Вес и повторы",
+    "trackingTypeTimeDistance": "Время и дистанция",
+    "add": "Добавить",
+    "edit": "Изменить",
+    "editGroupTitle": "Редактировать группу",
+    "editExerciseTitle": "Редактировать упражнение",
+    "deleteGroupTitle": "Удалить группу?",
+    "deleteExerciseTitle": "Удалить упражнение?"
   },
   "history": {
     "empty": "Тренировок пока нет",

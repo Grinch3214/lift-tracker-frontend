@@ -3,7 +3,7 @@
     <div class="exercise-card__header">
       <div class="exercise-card__meta">
         <span class="exercise-card__name">{{
-          t(`catalog.exercises.${exercise.id}`)
+          exerciseName(exercise, t)
         }}</span>
         <van-tag
           v-if="exercise.equipment"
@@ -96,6 +96,7 @@
 import type { Exercise, WorkoutExercise, SetEntry } from '~~/types';
 import { useWorkoutStore } from '@/stores/workout';
 import { isBodyweight } from '@/utils/format';
+import { exerciseName } from '@/utils/exercises';
 
 const props = defineProps<{
   exercise: Exercise;

@@ -6,7 +6,7 @@
           ? t('addSetSheet.editTitle')
           : t('addSetSheet.addTitle')
       }}</span>
-      <span class="add-set-sheet__exercise-name">{{ exerciseName }}</span>
+      <span class="add-set-sheet__exercise-name">{{ exerciseDisplayName }}</span>
     </div>
 
     <div v-if="prevSession" class="add-set-sheet__prev-info">
@@ -106,7 +106,7 @@
 import { useUiStore } from '@/stores/ui';
 import { useWorkoutStore } from '@/stores/workout';
 import { isBodyweight } from '@/utils/format';
-import { getExerciseById } from '@/utils/exercises';
+import { getExerciseById, exerciseName } from '@/utils/exercises';
 
 const { t } = useI18n();
 const uiStore = useUiStore();
@@ -129,10 +129,8 @@ const isTimeDistance = computed(
   () => exercise.value?.trackingType === 'time-distance',
 );
 
-const exerciseName = computed(() =>
-  sheet.value.exerciseId
-    ? t(`catalog.exercises.${sheet.value.exerciseId}`)
-    : '',
+const exerciseDisplayName = computed(() =>
+  exercise.value ? exerciseName(exercise.value, t) : '',
 );
 
 const prevSession = computed(() => {

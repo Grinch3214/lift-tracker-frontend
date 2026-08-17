@@ -9,4 +9,7 @@ export interface Exercise {
   equipment?: EquipmentType;
   trackingType: TrackingType;
   order?: number; // display order within the muscle group
+  // Soft-delete: hidden from the picker but still resolvable by id, so past workouts
+  // that logged this exercise keep displaying correctly. Custom exercises only.
+  isDeleted?: boolean;
 }

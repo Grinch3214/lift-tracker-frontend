@@ -1,13 +1,13 @@
 import type { MuscleGroup, Exercise } from '~~/types';
 
 export const muscleGroups: MuscleGroup[] = [
-  { id: 'chest', name: 'Chest', order: 1 },
-  { id: 'back', name: 'Back', order: 2 },
-  { id: 'shoulders', name: 'Shoulders', order: 3 },
-  { id: 'arms', name: 'Arms', order: 4 },
-  { id: 'legs', name: 'Legs', order: 5 },
-  { id: 'core', name: 'Core', order: 6 },
-  { id: 'cardio', name: 'Cardio', order: 7 },
+  { id: 'chest', name: 'Chest', order: 1, isCustom: false },
+  { id: 'back', name: 'Back', order: 2, isCustom: false },
+  { id: 'shoulders', name: 'Shoulders', order: 3, isCustom: false },
+  { id: 'arms', name: 'Arms', order: 4, isCustom: false },
+  { id: 'legs', name: 'Legs', order: 5, isCustom: false },
+  { id: 'core', name: 'Core', order: 6, isCustom: false },
+  { id: 'cardio', name: 'Cardio', order: 7, isCustom: false },
 ];
 
 export const exercises: Exercise[] = [

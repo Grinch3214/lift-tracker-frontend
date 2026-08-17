@@ -18,10 +18,14 @@
 </template>
 
 <script setup lang="ts">
-import type { Workout } from '~~/types';
+import type { MuscleGroup, Workout } from '~~/types';
 import { useUiStore } from '@/stores/ui';
 import { parseDate, formatWeekdayLabel } from '@/utils/date';
-import { getExerciseById } from '@/utils/exercises';
+import {
+  getExerciseById,
+  getMuscleGroupById,
+  muscleGroupName,
+} from '@/utils/exercises';
 import { pluralize } from '@/utils/pluralize';
 
 const props = defineProps<{ workout: Workout }>();
@@ -41,7 +45,11 @@ const groupNames = computed(() => {
       .map((we) => getExerciseById(we.exerciseId)?.muscleGroupId)
       .filter((id): id is string => Boolean(id)),
   );
-  return [...groupIds].map((id) => t(`catalog.muscleGroups.${id}`)).join(', ');
+  return [...groupIds]
+    .map((id) => getMuscleGroupById(id))
+    .filter((group): group is MuscleGroup => group !== undefined)
+    .map((group) => muscleGroupName(group, t))
+    .join(', ');
 });
 
 const totalSets = computed(() =>

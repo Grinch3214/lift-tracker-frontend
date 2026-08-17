@@ -50,8 +50,9 @@ Skip sections that don't apply (most components have no props/emits/router/expos
 ## Data flow
 
 ```
-types/*.ts                 ← shared interfaces: MuscleGroup, Exercise, Workout, WorkoutExercise, SetEntry, EquipmentType
-                              all ids are string, generated via app/utils/id.ts#generateId() at creation time
+types/*.ts                 ← shared interfaces: MuscleGroup, Exercise, Workout, WorkoutExercise, SetEntry,
+                              EquipmentType, TrackingType. All ids are string, generated via
+                              app/utils/id.ts#generateId() at creation time
 
 app/utils/id.ts             ← generateId() — crypto.randomUUID() when available, otherwise a
                               crypto.getRandomValues()-based UUID v4 fallback. Needed because randomUUID() only
@@ -66,7 +67,12 @@ app/data/muscle-groups.ts  ← static seed data: 7 muscle groups (incl. Cardio),
                               rendered directly, see i18n below. Being filled in for real muscle-group by
                               muscle-group (chest + cardio done); the rest still hold the original ~6-per-group
                               placeholder set from the initial rebuild.
-app/utils/exercises.ts     ← lookups over the static catalog: getExerciseById, getMuscleGroupById, getExercisesByMuscleGroup
+app/utils/exercises.ts     ← lookups merging the static catalog with user-created entries from
+                              app/stores/catalog.ts: getAllMuscleGroups, getExerciseById, getMuscleGroupById,
+                              getExercisesByMuscleGroup (custom entries first, so a freshly-added one shows at
+                              the top of its group without scrolling). Also exerciseName(exercise, t) /
+                              muscleGroupName(group, t) — the display-name resolver, see the note below on why
+                              this can't just be t(`catalog.exercises.${id}`) everywhere anymore.
 app/utils/date.ts          ← formatDate/parseDate ('YYYY-MM-DD' string <-> Date), isToday, formatDateLabel/formatWeekdayLabel (locale-aware, take a locale string), addDays
 app/utils/format.ts        ← isBodyweight(weight) — the "kg"/"BW" text itself comes from translations, not from this util
 app/utils/pluralize.ts     ← pluralize(count, {one, few, many}) — Russian has 3 plural forms, not 2; see i18n below
@@ -91,6 +97,17 @@ app/stores/ui.ts           ← UI-only state, not persisted: selectedDate (drive
                               restTimer (90s countdown + start/stop)
 app/stores/settings.ts     ← persisted user preferences (currently just primaryColor). Also exports colorPresets
                               (plain const, not store state) — the 7 selectable accent-color options.
+app/stores/catalog.ts      ← user-created catalog additions, persisted separately from the static seed data:
+                              customMuscleGroups ('lift-tracker-custom-muscle-groups'), customExercises
+                              ('lift-tracker-custom-exercises'). addMuscleGroup(name) pushes (new custom groups
+                              sort after the built-in ones); addExercise(name, muscleGroupId, equipment,
+                              trackingType) unshifts (newest custom exercise shows first in its group).
+                              updateMuscleGroup/updateExercise mutate in place (a rename is meant to show up in
+                              past history too, not just new entries). deleteMuscleGroup/deleteExercise are
+                              soft-deletes — they set isDeleted, never remove the array entry, see the note
+                              below on why. Never read these arrays directly outside app/utils/exercises.ts —
+                              go through its lookup functions so static+custom stay merged consistently
+                              everywhere.
 ```
 
 Workouts only store `exerciseId` (a string pointing into the static catalog), never exercise name/equipment directly — components resolve display data via `getExerciseById`.
@@ -129,6 +146,12 @@ app/layouts/default.vue           ← van-config-provider(dark) + TheHeader + <s
 
 Global popups (`WorkoutExercisePicker`, `WorkoutAddSetSheet`) are mounted once in the layout, not per-page, and are driven entirely by `ui` store state — components anywhere just flip `uiStore.exercisePicker.show` or `uiStore.addSetSheet = {...}` to open them. `TheSidebar` is different: only `TheHeader` can open it (nothing else needs to), so its `show` state is a local `ref` in `TheHeader.vue` passed down via `v-model:show`, not `ui` store state.
 
+`ExercisePicker.vue` builds its own header instead of using `van-action-sheet`'s `:title`/`closeable` props (`:closeable="false"`, no `:title`) — needed room for a "+" icon (add group when browsing groups, add exercise when inside one) next to the close icon, which Vant's built-in header has no slot for. The two "+" targets, `WorkoutAddMuscleGroupModal`/`WorkoutAddExerciseModal`, are mounted *inside* `ExercisePicker.vue` (not layout-global like the picker itself) with local `ref`-based `show` state, same reasoning as `TheSidebar` — nothing else opens them. Both modals double as edit dialogs (`editing-group`/`editing-exercise` props — when set, prefill from that record and call `catalogStore.update*` instead of `add*` on confirm) rather than being separate add/edit components.
+
+**Custom (user-created) exercises/groups have no translation key — never call `t(\`catalog.exercises.${id}\`)` / `t(\`catalog.muscleGroups.${id}\`)` directly.** Built-in catalog names are translated; a custom one is just whatever the user typed, verbatim, regardless of active locale (there's no correct translation to fall back to). Always go through `exerciseName(exercise, t)` / `muscleGroupName(group, t)` from `app/utils/exercises.ts`, which branch on `isCustom` and return the raw `name` field for custom entries. This is also why `Exercise.name`/`MuscleGroup.name` stopped being "English dev fallback only, never rendered" for custom entries specifically — for those it's the *only* rendered name.
+
+**Deleting a custom exercise/group is a soft-delete (`isDeleted: true`), never a real array removal — built-in (non-custom) entries can't be edited or deleted at all, by design.** Workouts reference exercises by id only; hard-deleting a custom entry a user logged sets ago would silently break every past `ExerciseCard`/history render for it (`getExerciseById` would return `undefined`). `getAllMuscleGroups`/`getExercisesByMuscleGroup` (picker-facing) filter out `isDeleted` entries; `getExerciseById`/`getMuscleGroupById` (used to resolve an *existing* reference) deliberately don't, so old workouts keep resolving and rendering forever. Editing (rename/change equipment/trackingType) is a plain in-place mutation, not soft-anything — a correction is *meant* to retroactively show up in past history too. In `ExercisePicker.vue`, both are reached by swiping a custom cell (`van-swipe-cell`, `:disabled="!entry.isCustom"` so built-in cells don't swipe at all) to reveal Edit/Delete buttons.
+
 **There is no per-exercise history view.** It existed briefly (tap the exercise card's title on the Workout page) but was removed — it wasn't discoverable (the click target wasn't obvious as interactive) and it also fought with drag-reorder: long-pressing text to start a drag would trigger the browser's native text-selection instead. The `/history` tab covers this need at the day level. Don't reintroduce a click handler on `.exercise-card__name`/`ExerciseCard.vue`'s title without solving both problems again.
 
 **Vant's `showConfirmDialog` rejects its promise when the user cancels.** `removeSet`/`removeExercise` in `index.vue` both `await` it — wrap in try/catch (return on catch) or cancelling throws an unhandled rejection in the console. Any new destructive-action confirmation should follow the same try/catch shape.
@@ -160,6 +183,6 @@ English + Russian via `@nuxtjs/i18n`. This is a permanent architecture decision,
 
 ## MVP scope
 
-Per `docs/02-mvp.md`, currently implemented: start a workout, add exercises, log sets, view history, view per-exercise history — all without registration, all local-only.
+Per `docs/02-mvp.md`, currently implemented: start a workout, add exercises, create custom exercises/muscle groups, log sets, view history — all without registration, all local-only.
 
-**Explicitly out of scope right now** (don't add unless the user asks and updates the docs first): Templates / prebuilt programs, a separate "Progress" tab browsing by muscle group, custom exercise creation, achievements, AI, social features, subscriptions, registration/cloud sync.
+**Explicitly out of scope right now** (don't add unless the user asks and updates the docs first): Templates / prebuilt programs, a separate "Progress" tab browsing by muscle group, achievements, AI, social features, subscriptions, registration/cloud sync.
