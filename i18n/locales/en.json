@@ -56,12 +56,17 @@
     "kg": "{weight} kg"
   },
   "restTimer": {
-    "label": "Rest"
+    "label": "Rest",
+    "settingsTitle": "Rest timer",
+    "modeOff": "Off",
+    "modeAuto": "Auto",
+    "modeCustom": "Custom"
   },
   "units": {
     "kg": "kg",
     "km": "km",
     "min": "min",
+    "sec": "sec",
     "bodyweight": "BW",
     "countWord": "{count} {word}",
     "exerciseWordOne": "exercise",

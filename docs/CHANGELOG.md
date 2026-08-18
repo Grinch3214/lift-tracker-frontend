@@ -171,3 +171,19 @@
 
 - Chest/Cardio are the only muscle groups filled in with real data so far — the rest still hold the original small placeholder set.
 - "Создание своих упражнений" was explicitly out of MVP scope until now — `docs/02-mvp.md`/`03-roadmap.md` updated to reflect that it's built.
+
+## 2026-08-18
+
+### Added
+
+- Rest timer is now configurable from the sidebar, with 3 mutually exclusive modes: off, auto (existing behavior, now with a configurable duration instead of a fixed 90s), and custom (a permanently visible banner with manual start/pause/reset controls, no auto-start on logging a set). See `CLAUDE.md` for the full behavior breakdown.
+
+### Changed
+
+- Rest timer settings moved out of the sidebar's own body into a dedicated modal, opened via a "Таймер отдыха" menu item — keeps the drawer itself short and leaves room for future menu items.
+- Duration is now entered as separate minutes/seconds fields instead of raw seconds, plus ±5s buttons that carry correctly between the two (e.g. `55s + 5s → 1:00`).
+- The duration control is shown for both auto and custom modes (previously auto-only) — a custom-mode user no longer has to switch to auto just to change the number, and changing it while idle in custom mode updates the banner immediately instead of requiring a manual reset or page reload.
+
+### Fixed
+
+- The rest-timer settings modal opened pinned to the sidebar's left edge instead of centered on screen — it's a popup nested inside another popup (the sidebar), and Vant's popups center via a permanent CSS `transform`, which makes a non-teleported nested popup center against its transformed ancestor instead of the viewport. Fixed with `teleport="body"`.

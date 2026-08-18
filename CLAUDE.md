@@ -94,9 +94,17 @@ app/stores/workout.ts      ← THE store. workouts: Workout[] persisted via useS
 app/stores/ui.ts           ← UI-only state, not persisted: selectedDate (drives which day is shown on Workout page),
                               addSetSheet (add/edit-set popup state — the name is historical, it's rendered
                               as a centered popup now, not a bottom sheet), exercisePicker (show flag),
-                              restTimer (90s countdown + start/stop)
-app/stores/settings.ts     ← persisted user preferences (currently just primaryColor). Also exports colorPresets
-                              (plain const, not store state) — the 7 selectable accent-color options.
+                              restTimer ({active, remaining, total}, countdown driven by a module-scope
+                              setInterval shared across the store singleton's lifetime — not persisted, resets
+                              on page reload). startRestTimer(seconds)/stopRestTimer() (unconditional start/stop),
+                              resumeRestTimer() (continues from current `remaining` without resetting it — used
+                              by custom mode's pause/play toggle), resetRestTimer(seconds) (stops AND rewinds
+                              to a fresh duration, active:false — used by custom mode's reset button). See
+                              settings.ts below for the 3 modes that decide which of these get called when.
+app/stores/settings.ts     ← persisted user preferences: primaryColor, restTimerMode ('off'|'auto'|'custom',
+                              see the note below on what each does), restTimerDuration (seconds, used by
+                              auto-mode's auto-start and as the reset target in custom mode). Also exports
+                              colorPresets (plain const, not store state) — the 7 selectable accent-color options.
 app/stores/catalog.ts      ← user-created catalog additions, persisted separately from the static seed data:
                               customMuscleGroups ('lift-tracker-custom-muscle-groups'), customExercises
                               ('lift-tracker-custom-exercises'). addMuscleGroup(name) pushes (new custom groups
@@ -125,9 +133,14 @@ app/layouts/default.vue           ← van-config-provider(dark) + TheHeader + <s
   app/components/the/TheSidebar.vue  ← left-side van-popup drawer: header row (EN/RU circular locale
                                         buttons, left — generated from useI18n().locales, sized/shaped to
                                         match the color swatches on purpose, for future flag-icon swap-in;
-                                        close icon, right), empty menu-list placeholder (commented v-for
-                                        scaffold), accent-color swatches (bottom, horizontally scrollable —
-                                        native scrollbar hidden via scrollbar-width/::-webkit-scrollbar)
+                                        close icon, right), a menu list (currently one item, "Таймер отдыха",
+                                        opening TheRestTimerSettingsModal — see the note below), accent-color
+                                        swatches (bottom, horizontally scrollable — native scrollbar hidden
+                                        via scrollbar-width/::-webkit-scrollbar)
+  app/components/the/TheRestTimerSettingsModal.vue ← centered van-popup, mounted inside TheSidebar.vue with
+                                        a local `ref`-based show state (same reasoning as TheSidebar itself —
+                                        nothing else opens it): 3-way mode selector + conditional duration
+                                        stepper (minutes/seconds split fields, ±5s buttons), see the note below
   app/components/the/TheFooter.vue   ← 2-tab bottom nav (Workout / History), route-driven
 
   app/pages/index.vue ("/")          ← Workout page for ui.selectedDate; swipe left/right (useSwipe) moves
@@ -136,13 +149,21 @@ app/layouts/default.vue           ← van-config-provider(dark) + TheHeader + <s
                                         Exercise cards are drag-reorderable (useSortable, whole card is the
                                         drag target, delayOnTouchOnly so a quick tap still reaches buttons/sets
                                         underneath) — see the reactivity gotcha below before touching this.
-    WorkoutRestTimer                    ← rest banner, only visible while ui.restTimer.active
+    WorkoutRestTimer                    ← rest banner; visibility depends on settings.restTimerMode — 'off':
+                                             never shown, 'auto': shown only while ui.restTimer.active (same as
+                                             before), 'custom': always shown (a permanent plaque with its own
+                                             play/pause/reset controls instead of the tap-anywhere-to-dismiss
+                                             behavior the other two modes use)
     WorkoutExerciseCard (per exercise)  ← sets table, PR badge, add/edit/delete set, delete exercise
     WorkoutEmptyState                   ← shown when the selected day has no exercises yet
 
   app/pages/history.vue ("/history") ← all workouts, sorted newest-first
     HistoryWorkoutListItem (per workout) ← tap sets ui.selectedDate + navigates to "/"
 ```
+
+**A `van-popup` nested inside another `van-popup` needs `teleport="body"`, or it mis-centers relative to its transformed ancestor instead of the viewport.** Vant's positioned popup variants (`--left`, `--right`, `--top`, `--bottom`, and the default `--center`) all center themselves via a permanent (not just transition-time) `transform: translate3d(...)` — e.g. `.van-popup--left` is `top:50%; transform:translate3d(0,-50%,0)`. A CSS `transform` on an ancestor creates a new containing block for any descendant `position: fixed` element, so a `van-popup` rendered in the DOM *inside* another (non-teleported) `van-popup` ends up centering against that ancestor's box, not the screen — `TheRestTimerSettingsModal.vue` mounted inside `TheSidebar.vue` (which is `position="left"`) visibly opened pinned to the left edge instead of centered until `teleport="body"` was added. `ExercisePicker.vue`'s `WorkoutAddMuscleGroupModal`/`WorkoutAddExerciseModal` (nested inside a `van-action-sheet`, which wraps the same `Popup` component internally) likely have this same latent bug — just less visually obvious there since they haven't been reported broken. Any future popup/modal mounted *inside* another popup-family component should get `teleport="body"` by default, not just when a bug surfaces.
+
+**Nuxt's component auto-import prefixes a component's tag name with its subdirectory under `app/components/`, unless the filename already starts with that prefix.** `app/components/workout/AddMuscleGroupModal.vue` is used in templates as `<WorkoutAddMuscleGroupModal>`, not `<AddMuscleGroupModal>` — same reason `TheHeader.vue`/`TheSidebar.vue`/`TheFooter.vue` (whose filenames already start with "The") register under their own plain name instead of doubling up to `TheTheHeader`. This is also why every component filename in `app/components/the/` starts with "The" — it's not just a naming preference, the prefix-collapsing behavior means a same-directory file whose name *doesn't* start with the prefix ends up with a different tag name than its siblings (e.g. a hypothetical `app/components/the/RestTimerSettingsModal.vue` would need `<TheRestTimerSettingsModal>` in templates despite the file itself not saying "The" anywhere — confusing enough that it got renamed to `TheRestTimerSettingsModal.vue` specifically to keep filename and tag name matching, like every other file in that directory). Getting the tag wrong compiles with no error but fails silently at runtime (`[Vue warn]: Failed to resolve component`, renders nothing). Also: a dev server running before a new component file is added doesn't always pick it up via HMR — restart it if a newly-added component won't resolve.
 
 `app/app.vue` also syncs Vant's own component locale (`en-US`/`ru-RU`) to the active app language via a `watch(locale, ...)` — this lives in `app.vue`'s `<script setup>`, not a plugin (see i18n section for why).
 
@@ -159,6 +180,12 @@ Global popups (`WorkoutExercisePicker`, `WorkoutAddSetSheet`) are mounted once i
 **There is no per-exercise history view.** It existed briefly (tap the exercise card's title on the Workout page) but was removed — it wasn't discoverable (the click target wasn't obvious as interactive) and it also fought with drag-reorder: long-pressing text to start a drag would trigger the browser's native text-selection instead. The `/history` tab covers this need at the day level. Don't reintroduce a click handler on `.exercise-card__name`/`ExerciseCard.vue`'s title without solving both problems again.
 
 **Vant's `showConfirmDialog` rejects its promise when the user cancels.** `removeSet`/`removeExercise` in `index.vue` both `await` it — wrap in try/catch (return on catch) or cancelling throws an unhandled rejection in the console. Any new destructive-action confirmation should follow the same try/catch shape.
+
+**Rest timer has 3 mutually exclusive modes (`settings.restTimerMode`), not independently combinable toggles.** 'off': `AddSetSheet.vue#confirm()` never calls `startRestTimer`, and the banner is gated out entirely, so it never renders regardless of `ui.restTimer` state. 'auto': the original behavior — logging a set calls `uiStore.startRestTimer(settingsStore.restTimerDuration)`, banner shows only while `ui.restTimer.active`, tapping the banner dismisses it (`stopRestTimer`). 'custom': fully manual — logging a set does *not* touch the timer at all; the banner is permanently visible instead (`RestTimer.vue`'s `showBanner` is `isCustomMode || ui.restTimer.active`, so custom mode forces it on even with `active:false`) with its own play/pause (`toggleRunning` — resumes from wherever `remaining` is via `resumeRestTimer` if paused mid-countdown, otherwise starts fresh from `restTimerDuration`) and reset (`resetRestTimer(restTimerDuration)`) controls, and tap-to-dismiss is disabled since there's nothing to dismiss.
+
+Settings live in `TheRestTimerSettingsModal.vue`, opened from a menu item in `TheSidebar.vue` (not inlined in the sidebar itself — kept the drawer short, and leaves room for future menu items). The duration stepper is shown whenever mode isn't 'off' (covers both 'auto' *and* 'custom' — deliberately not auto-only, since gating it to auto-only meant a custom-mode user had to temporarily switch to auto just to change the number, which is exactly the friction this modal exists to remove). Duration is entered as **separate minutes/seconds fields**, not a single raw-seconds input — `120` seconds is a worse UX to type/read than `2 min 0 sec`, and it matches the M:SS format the banner itself already displays. `commitDuration()` combines both fields into one total (clamped to a 5s floor) and writes it to `settingsStore.restTimerDuration`; the ±5s stepper buttons adjust that same total directly, so a `55s + 5s` press correctly carries into `1:00` rather than needing the two fields' individual carry logic handled ad hoc. Both fields' `@blur` calls the same `commitDuration()`.
+
+`app/app.vue` has two watchers on rest-timer settings, handling edges no single component's local logic could own on its own: one on `settingsStore.restTimerMode` (switching away to 'off' force-stops any timer left running from 'auto'; switching into 'custom', or loading the app already in it, seeds the banner to the configured duration rather than leaving it at whatever `ui.restTimer`'s default/stale value was), and one on `settingsStore.restTimerDuration` itself (if currently in 'custom' mode and the timer is idle — i.e. not actively counting down — editing the duration in the settings modal immediately re-seeds the banner via `resetRestTimer`, so the change is visible without needing a manual reset tap or a page reload; guarded on `!uiStore.restTimer.active` so it never yanks an in-progress countdown out from under someone mid-rest — if they want the new value applied to a running timer, they tap reset themselves, which reads the current `restTimerDuration` at that point anyway).
 
 **PR badge is per-set-id, not per-weight.** `ExerciseCard.vue`'s `isPR`/`prSetId` must flag only the *last* set that reaches the record weight, never every tied set.
 

@@ -56,12 +56,17 @@
     "kg": "{weight} кг"
   },
   "restTimer": {
-    "label": "Отдых"
+    "label": "Отдых",
+    "settingsTitle": "Таймер отдыха",
+    "modeOff": "Выкл",
+    "modeAuto": "Авто",
+    "modeCustom": "Кастом"
   },
   "units": {
     "kg": "кг",
     "km": "км",
     "min": "мин",
+    "sec": "сек",
     "bodyweight": "СВ",
     "countWord": "{count} {word}",
     "exerciseWordOne": "упражнение",

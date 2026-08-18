@@ -105,12 +105,14 @@
 <script setup lang="ts">
 import { useUiStore } from '@/stores/ui';
 import { useWorkoutStore } from '@/stores/workout';
+import { useSettingsStore } from '@/stores/settings';
 import { isBodyweight } from '@/utils/format';
 import { getExerciseById, exerciseName } from '@/utils/exercises';
 
 const { t } = useI18n();
 const uiStore = useUiStore();
 const workoutStore = useWorkoutStore();
+const settingsStore = useSettingsStore();
 
 const weightStr = ref('');
 const repsStr = ref('');
@@ -201,7 +203,9 @@ function confirm() {
       sheet.value.workoutExerciseId,
       values,
     );
-    uiStore.startRestTimer(90);
+    if (settingsStore.restTimerMode === 'auto') {
+      uiStore.startRestTimer(settingsStore.restTimerDuration);
+    }
   }
   uiStore.addSetSheet.show = false;
 }

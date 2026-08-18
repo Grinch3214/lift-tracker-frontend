@@ -28,10 +28,22 @@
     </div>
 
     <ul class="sidebar__menu-list">
-      <!-- <li v-for="item in menuItems" :key="item.id" @click="selectMenuItem(item)">{{ item.label }}</li> -->
+      <li>
+        <button
+          type="button"
+          class="sidebar__menu-item"
+          @click="showTimerModal = true"
+        >
+          <van-icon name="clock-o" size="16" />
+          <span class="sidebar__menu-item-label">{{
+            t('restTimer.settingsTitle')
+          }}</span>
+          <van-icon name="arrow" size="14" class="sidebar__menu-item-arrow" />
+        </button>
+      </li>
     </ul>
 
-    <!-- <div class="spacer" /> -->
+    <TheRestTimerSettingsModal v-model:show="showTimerModal" />
 
     <div class="sidebar__color-picker">
       <button
@@ -58,8 +70,10 @@ defineEmits<{
   'update:show': [value: boolean];
 }>();
 
-const { locale, locales, setLocale } = useI18n();
+const { t, locale, locales, setLocale } = useI18n();
 const settingsStore = useSettingsStore();
+
+const showTimerModal = ref(false);
 </script>
 
 <style scoped lang="scss">
@@ -81,6 +95,35 @@ const settingsStore = useSettingsStore();
   &__close-btn {
     color: var(--van-text-color-2);
     cursor: pointer;
+  }
+
+  &__menu-list {
+    display: flex;
+    flex-direction: column;
+    margin-block-end: 8px;
+  }
+
+  &__menu-item {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 4px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--van-text-color);
+    font-size: 14px;
+    cursor: pointer;
+  }
+
+  &__menu-item-label {
+    flex: 1;
+    text-align: start;
+  }
+
+  &__menu-item-arrow {
+    color: var(--van-text-color-2);
   }
 
   &__color-picker {

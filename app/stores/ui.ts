@@ -27,17 +27,31 @@ export const useUiStore = defineStore('ui', () => {
 
   let timerInterval: ReturnType<typeof setInterval> | null = null;
 
+  function tickRestTimer() {
+    if (restTimer.value.remaining > 0) {
+      restTimer.value.remaining--;
+    } else {
+      restTimer.value.active = false;
+      if (timerInterval) clearInterval(timerInterval);
+    }
+  }
+
   function startRestTimer(seconds = 90) {
     if (timerInterval) clearInterval(timerInterval);
     restTimer.value = { active: true, remaining: seconds, total: seconds };
-    timerInterval = setInterval(() => {
-      if (restTimer.value.remaining > 0) {
-        restTimer.value.remaining--;
-      } else {
-        restTimer.value.active = false;
-        if (timerInterval) clearInterval(timerInterval);
-      }
-    }, 1000);
+    timerInterval = setInterval(tickRestTimer, 1000);
+  }
+
+  function resumeRestTimer() {
+    if (timerInterval) clearInterval(timerInterval);
+    if (restTimer.value.remaining <= 0) return;
+    restTimer.value.active = true;
+    timerInterval = setInterval(tickRestTimer, 1000);
+  }
+
+  function resetRestTimer(seconds: number) {
+    if (timerInterval) clearInterval(timerInterval);
+    restTimer.value = { active: false, remaining: seconds, total: seconds };
   }
 
   function stopRestTimer() {
@@ -51,6 +65,8 @@ export const useUiStore = defineStore('ui', () => {
     exercisePicker,
     restTimer,
     startRestTimer,
+    resumeRestTimer,
+    resetRestTimer,
     stopRestTimer,
   };
 });

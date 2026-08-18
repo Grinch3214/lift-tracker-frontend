@@ -1,9 +1,9 @@
 <template>
   <Transition name="slide-down">
     <div
-      v-if="uiStore.restTimer.active"
+      v-if="showBanner"
       class="rest-timer"
-      @click="uiStore.stopRestTimer()"
+      @click="!isCustomMode && uiStore.stopRestTimer()"
     >
       <van-icon name="clock-o" size="15" />
       <span class="rest-timer__label">{{ t('restTimer.label') }}</span>
@@ -14,16 +14,35 @@
           :style="{ width: timerProgress + '%' }"
         />
       </div>
-      <van-icon name="cross" size="13" color="#888" />
+      <template v-if="isCustomMode">
+        <van-icon
+          :name="uiStore.restTimer.active ? 'pause-circle-o' : 'play-circle-o'"
+          size="20"
+          class="rest-timer__control"
+          @click.stop="toggleRunning"
+        />
+        <van-icon
+          name="replay"
+          size="18"
+          class="rest-timer__control"
+          @click.stop="reset"
+        />
+      </template>
+      <van-icon v-else name="cross" size="13" color="#888" />
     </div>
   </Transition>
 </template>
 
 <script setup lang="ts">
 import { useUiStore } from '@/stores/ui';
+import { useSettingsStore } from '@/stores/settings';
 
 const { t } = useI18n();
 const uiStore = useUiStore();
+const settingsStore = useSettingsStore();
+
+const isCustomMode = computed(() => settingsStore.restTimerMode === 'custom');
+const showBanner = computed(() => isCustomMode.value || uiStore.restTimer.active);
 
 const timerDisplay = computed(() => {
   const s = uiStore.restTimer.remaining;
@@ -34,6 +53,21 @@ const timerProgress = computed(() => {
   const { remaining, total } = uiStore.restTimer;
   return total > 0 ? (remaining / total) * 100 : 0;
 });
+
+function toggleRunning() {
+  const timer = uiStore.restTimer;
+  if (timer.active) {
+    uiStore.stopRestTimer();
+  } else if (timer.remaining > 0 && timer.remaining < timer.total) {
+    uiStore.resumeRestTimer();
+  } else {
+    uiStore.startRestTimer(settingsStore.restTimerDuration);
+  }
+}
+
+function reset() {
+  uiStore.resetRestTimer(settingsStore.restTimerDuration);
+}
 </script>
 
 <style scoped lang="scss">
@@ -73,6 +107,11 @@ const timerProgress = computed(() => {
     background: var(--van-primary-color);
     border-radius: 2px;
     transition: width 1s linear;
+  }
+
+  &__control {
+    color: var(--van-primary-color);
+    cursor: pointer;
   }
 
   &.slide-down-enter-active,
