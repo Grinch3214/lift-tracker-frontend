@@ -187,3 +187,9 @@
 ### Fixed
 
 - The rest-timer settings modal opened pinned to the sidebar's left edge instead of centered on screen — it's a popup nested inside another popup (the sidebar), and Vant's popups center via a permanent CSS `transform`, which makes a non-teleported nested popup center against its transformed ancestor instead of the viewport. Fixed with `teleport="body"`.
+
+## 2026-08-19
+
+### Changed
+
+- "Руки" muscle group replaced with "Бицепс" — 13 curated biceps exercises (barbell/machine/cable/dumbbell curl variants, preacher curl, concentration curl, overhead cable curl, hammer curl, reverse-grip chin-up) replacing the old 6-exercise arms placeholder set (which mixed biceps and triceps movements together). A separate "Трицепс" group is expected once that list is provided.
