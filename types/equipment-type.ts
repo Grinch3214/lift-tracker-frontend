@@ -6,4 +6,5 @@ export type EquipmentType =
   | 'cable'
   | 'bodyweight'
   | 'smith-machine'
-  | 'hammer';
+  | 'hammer'
+  | 't-bar';
