@@ -6,7 +6,9 @@
           ? t('addSetSheet.editTitle')
           : t('addSetSheet.addTitle')
       }}</span>
-      <span class="add-set-sheet__exercise-name">{{ exerciseDisplayName }}</span>
+      <span class="add-set-sheet__exercise-name">{{
+        exerciseDisplayName
+      }}</span>
     </div>
 
     <div v-if="prevSession" class="add-set-sheet__prev-info">
@@ -78,6 +80,24 @@
       </div>
     </div>
 
+    <div v-if="isDumbbell" class="add-set-sheet__dumbbell-row">
+      <span class="add-set-sheet__dumbbell-label">{{
+        t('addSetSheet.dumbbellCountLabel')
+      }}</span>
+      <div class="add-set-sheet__dumbbell-toggle">
+        <button
+          v-for="count in DUMBBELL_COUNTS"
+          :key="count"
+          type="button"
+          class="add-set-sheet__dumbbell-btn"
+          :class="{ active: dumbbellCount === count }"
+          @click="dumbbellCount = count"
+        >
+          ×{{ count }}
+        </button>
+      </div>
+    </div>
+
     <div class="add-set-sheet__actions">
       <van-button
         plain
@@ -114,10 +134,12 @@ const uiStore = useUiStore();
 const workoutStore = useWorkoutStore();
 const settingsStore = useSettingsStore();
 
+const DUMBBELL_COUNTS = [1, 2] as const;
 const weightStr = ref('');
 const repsStr = ref('');
 const durationStr = ref('');
 const distanceStr = ref('');
+const dumbbellCount = ref<1 | 2>(2);
 const weightFieldRef = ref<{ focus: () => void } | null>(null);
 const durationFieldRef = ref<{ focus: () => void } | null>(null);
 
@@ -130,6 +152,8 @@ const exercise = computed(() =>
 const isTimeDistance = computed(
   () => exercise.value?.trackingType === 'time-distance',
 );
+
+const isDumbbell = computed(() => exercise.value?.equipment === 'dumbbell');
 
 const exerciseDisplayName = computed(() =>
   exercise.value ? exerciseName(exercise.value, t) : '',
@@ -160,6 +184,7 @@ watch(
         sheet.value.defaultDistanceKm > 0
           ? String(sheet.value.defaultDistanceKm)
           : '';
+      dumbbellCount.value = sheet.value.defaultDumbbellCount;
       nextTick(() =>
         isTimeDistance.value
           ? durationFieldRef.value?.focus()
@@ -175,6 +200,7 @@ function confirm() {
     reps?: number;
     durationSeconds?: number;
     distanceKm?: number;
+    dumbbellCount?: 1 | 2;
   };
 
   if (isTimeDistance.value) {
@@ -187,7 +213,11 @@ function confirm() {
   } else {
     const reps = parseInt(repsStr.value) || 0;
     if (reps === 0) return;
-    values = { weight: parseFloat(weightStr.value) || 0, reps };
+    values = {
+      weight: parseFloat(weightStr.value) || 0,
+      reps,
+      ...(isDumbbell.value ? { dumbbellCount: dumbbellCount.value } : {}),
+    };
   }
 
   if (sheet.value.setId !== null) {
@@ -287,6 +317,41 @@ function cancel() {
     width: 1px;
     background: var(--van-border-color);
     align-self: stretch;
+  }
+
+  &__dumbbell-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-block-end: 20px;
+  }
+
+  &__dumbbell-label {
+    font-size: 13px;
+    color: var(--van-text-color-2);
+  }
+
+  &__dumbbell-toggle {
+    display: flex;
+    gap: 6px;
+  }
+
+  &__dumbbell-btn {
+    width: 40px;
+    padding: 6px 0;
+    border-radius: 8px;
+    border: 1px solid var(--van-border-color);
+    background: transparent;
+    color: var(--van-text-color-2);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+
+    &.active {
+      background: var(--van-primary-color);
+      border-color: var(--van-primary-color);
+      color: var(--lt-main-color);
+    }
   }
 
   &__actions {

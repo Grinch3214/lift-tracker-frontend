@@ -27,6 +27,7 @@
     "repsLabel": "Повторы",
     "durationLabel": "Время (мин)",
     "distanceLabel": "Дистанция (км)",
+    "dumbbellCountLabel": "Гантели",
     "lastSession": "Последний раз: {weight} × {reps} повторов",
     "cancel": "Отмена",
     "save": "Сохранить"

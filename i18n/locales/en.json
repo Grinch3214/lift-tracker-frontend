@@ -27,6 +27,7 @@
     "repsLabel": "Reps",
     "durationLabel": "Time (min)",
     "distanceLabel": "Distance (km)",
+    "dumbbellCountLabel": "Dumbbells",
     "lastSession": "Last session: {weight} × {reps} reps",
     "cancel": "Cancel",
     "save": "Save"

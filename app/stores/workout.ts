@@ -81,7 +81,7 @@ export const useWorkoutStore = defineStore('workout', () => {
 
   type SetValues = Pick<
     SetEntry,
-    'weight' | 'reps' | 'durationSeconds' | 'distanceKm'
+    'weight' | 'reps' | 'durationSeconds' | 'distanceKm' | 'dumbbellCount'
   >;
 
   function addSet(
@@ -141,7 +141,8 @@ export const useWorkoutStore = defineStore('workout', () => {
         const maxWeight =
           sets.length > 0 ? Math.max(...sets.map((s) => s.weight ?? 0)) : 0;
         const totalVolume = sets.reduce(
-          (sum, s) => sum + (s.weight ?? 0) * (s.reps ?? 0),
+          (sum, s) =>
+            sum + (s.weight ?? 0) * (s.dumbbellCount ?? 1) * (s.reps ?? 0),
           0,
         );
         const bestSet =

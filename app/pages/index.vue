@@ -113,7 +113,11 @@ const totalVolume = computed(() =>
   exercises.value.reduce(
     (sum, ex) =>
       sum +
-      ex.sets.reduce((s, set) => s + (set.weight ?? 0) * (set.reps ?? 0), 0),
+      ex.sets.reduce(
+        (s, set) =>
+          s + (set.weight ?? 0) * (set.dumbbellCount ?? 1) * (set.reps ?? 0),
+        0,
+      ),
     0,
   ),
 );
@@ -161,6 +165,7 @@ function openAddSet(we: WorkoutExercise) {
     defaultReps: lastSet?.reps ?? 0,
     defaultDurationSeconds: lastSet?.durationSeconds ?? 0,
     defaultDistanceKm: lastSet?.distanceKm ?? 0,
+    defaultDumbbellCount: lastSet?.dumbbellCount ?? 2,
   };
 }
 
@@ -175,6 +180,7 @@ function openEditSet(we: WorkoutExercise, set: SetEntry) {
     defaultReps: set.reps ?? 0,
     defaultDurationSeconds: set.durationSeconds ?? 0,
     defaultDistanceKm: set.distanceKm ?? 0,
+    defaultDumbbellCount: set.dumbbellCount ?? 2,
   };
 }
 

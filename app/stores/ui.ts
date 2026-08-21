@@ -15,6 +15,7 @@ export const useUiStore = defineStore('ui', () => {
     defaultReps: 0,
     defaultDurationSeconds: 0,
     defaultDistanceKm: 0,
+    defaultDumbbellCount: 2,
   });
 
   const exercisePicker = ref({ show: false });

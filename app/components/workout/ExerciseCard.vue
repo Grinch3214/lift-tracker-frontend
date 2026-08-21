@@ -70,7 +70,7 @@
         </span>
         <span class="exercise-card__set-reps">{{ set.reps }}</span>
         <span class="exercise-card__set-vol">{{
-          (set.weight ?? 0) * (set.reps ?? 0)
+          (set.weight ?? 0) * (set.dumbbellCount ?? 1) * (set.reps ?? 0)
         }}</span>
       </template>
       <van-icon

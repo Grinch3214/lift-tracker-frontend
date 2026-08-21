@@ -69,7 +69,11 @@ const totalVolume = computed(() =>
   props.workout.exercises.reduce(
     (sum, e) =>
       sum +
-      e.sets.reduce((s, set) => s + (set.weight ?? 0) * (set.reps ?? 0), 0),
+      e.sets.reduce(
+        (s, set) =>
+          s + (set.weight ?? 0) * (set.dumbbellCount ?? 1) * (set.reps ?? 0),
+        0,
+      ),
     0,
   ),
 );

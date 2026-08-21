@@ -8,4 +8,5 @@ export interface AddSetSheetState {
   defaultReps: number;
   defaultDurationSeconds: number;
   defaultDistanceKm: number;
+  defaultDumbbellCount: 1 | 2;
 }

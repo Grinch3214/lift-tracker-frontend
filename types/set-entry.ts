@@ -6,5 +6,6 @@ export interface SetEntry {
   reps?: number;
   durationSeconds?: number;
   distanceKm?: number;
+  dumbbellCount?: 1 | 2;
   isCompleted: boolean;
 }

@@ -199,3 +199,4 @@
 ### Added
 
 - New "Трицепс" muscle group, 14 exercises: close-grip bench press (barbell/Smith machine), lying/seated skull crusher, seated/lying dumbbell extension, single-arm overhead extension, machine extension, overhead cable extension, cable pushdown, dumbbell kickback, triceps dip (bodyweight/machine), bench dip. Catalog is now 8 groups / 83 exercises total.
+- Dumbbell exercises now have a ×1/×2 toggle in the add/edit-set popup (defaults to ×2), fixing volume being undercounted for two-dumbbell movements. Weight still means "per dumbbell", so PRs are unaffected — only volume sums (day summary, history list, per-exercise history, the per-set "Vol" column) multiply by the selected count. See `CLAUDE.md` for the full breakdown.
