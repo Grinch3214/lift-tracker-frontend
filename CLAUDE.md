@@ -62,13 +62,12 @@ app/utils/id.ts             ← generateId() — crypto.randomUUID() when availa
                               the first id-generating action. Always use this helper, never call
                               crypto.randomUUID() directly.
 
-app/data/muscle-groups.ts  ← static seed data: 7 muscle groups, 69 exercises (id, name, muscleGroupId,
+app/data/muscle-groups.ts  ← static seed data: 8 muscle groups, 83 exercises (id, name, muscleGroupId,
                               equipment, trackingType). `name` here is an English dev fallback only — never
                               rendered directly, see i18n below. Being filled in for real muscle-group by
-                              muscle-group (chest, cardio, biceps done — "arms" no longer exists as a group,
-                              replaced by "biceps"; a separate "triceps" group is expected once that list is
-                              provided too); back/shoulders/legs/core still hold the original ~6-per-group
-                              placeholder set from the initial rebuild.
+                              muscle-group (chest, cardio, biceps, triceps done — "arms" no longer exists as
+                              a group, split into separate "biceps"/"triceps" groups); back/shoulders/legs/core
+                              still hold the original ~6-per-group placeholder set from the initial rebuild.
 app/utils/exercises.ts     ← lookups merging the static catalog with user-created entries from
                               app/stores/catalog.ts: getAllMuscleGroups, getExerciseById, getMuscleGroupById,
                               getExercisesByMuscleGroup (custom entries first, so a freshly-added one shows at

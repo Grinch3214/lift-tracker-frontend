@@ -193,3 +193,9 @@
 ### Changed
 
 - "Руки" muscle group replaced with "Бицепс" — 13 curated biceps exercises (barbell/machine/cable/dumbbell curl variants, preacher curl, concentration curl, overhead cable curl, hammer curl, reverse-grip chin-up) replacing the old 6-exercise arms placeholder set (which mixed biceps and triceps movements together). A separate "Трицепс" group is expected once that list is provided.
+
+## 2026-08-21
+
+### Added
+
+- New "Трицепс" muscle group, 14 exercises: close-grip bench press (barbell/Smith machine), lying/seated skull crusher, seated/lying dumbbell extension, single-arm overhead extension, machine extension, overhead cable extension, cable pushdown, dumbbell kickback, triceps dip (bodyweight/machine), bench dip. Catalog is now 8 groups / 83 exercises total.
