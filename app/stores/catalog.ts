@@ -52,14 +52,22 @@ export const useCatalogStore = defineStore('catalog', () => {
     return exercise;
   }
 
+  function findMuscleGroup(id: string): MuscleGroup | undefined {
+    return customMuscleGroups.value.find((g) => g.id === id);
+  }
+
+  function findExercise(id: string): Exercise | undefined {
+    return customExercises.value.find((e) => e.id === id);
+  }
+
   function updateMuscleGroup(id: string, name: string): void {
-    const group = customMuscleGroups.value.find((g) => g.id === id);
+    const group = findMuscleGroup(id);
     if (!group) return;
     group.name = name;
   }
 
   function deleteMuscleGroup(id: string): void {
-    const group = customMuscleGroups.value.find((g) => g.id === id);
+    const group = findMuscleGroup(id);
     if (!group) return;
     group.isDeleted = true;
   }
@@ -72,13 +80,13 @@ export const useCatalogStore = defineStore('catalog', () => {
       trackingType: TrackingType;
     },
   ): void {
-    const exercise = customExercises.value.find((e) => e.id === id);
+    const exercise = findExercise(id);
     if (!exercise) return;
     Object.assign(exercise, values);
   }
 
   function deleteExercise(id: string): void {
-    const exercise = customExercises.value.find((e) => e.id === id);
+    const exercise = findExercise(id);
     if (!exercise) return;
     exercise.isDeleted = true;
   }
