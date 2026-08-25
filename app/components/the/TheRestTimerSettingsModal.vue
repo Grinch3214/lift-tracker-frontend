@@ -25,64 +25,103 @@
         type="button"
         class="rest-timer-settings-modal__mode-btn"
         :class="{ active: settingsStore.restTimerMode === mode }"
-        @click="settingsStore.restTimerMode = mode"
+        @click="selectMode(mode)"
       >
         {{ t(restTimerModeLabelKeys[mode]) }}
       </button>
     </div>
 
-    <div
-      v-if="settingsStore.restTimerMode !== 'off'"
-      class="rest-timer-settings-modal__duration-row"
-    >
-      <button
-        type="button"
-        class="rest-timer-settings-modal__stepper-btn"
-        @click="adjustDuration(-5)"
-      >
-        −
-      </button>
-      <div class="rest-timer-settings-modal__duration-inputs">
-        <div class="rest-timer-settings-modal__duration-block">
-          <van-field
-            v-model="minutesInput"
-            type="digit"
-            input-align="center"
-            class="rest-timer-settings-modal__duration-field"
-            @blur="commitDuration"
-          />
-          <span class="rest-timer-settings-modal__duration-label">{{
-            t('units.min')
-          }}</span>
+    <template v-if="settingsStore.restTimerMode !== 'off'">
+      <div class="rest-timer-settings-modal__duration-row">
+        <button
+          type="button"
+          class="rest-timer-settings-modal__stepper-btn"
+          @click="adjustDuration(-5)"
+        >
+          −
+        </button>
+        <div class="rest-timer-settings-modal__duration-inputs">
+          <div class="rest-timer-settings-modal__duration-block">
+            <van-field
+              v-model="minutesInput"
+              type="digit"
+              input-align="center"
+              class="rest-timer-settings-modal__duration-field"
+              @blur="commitDuration"
+            />
+            <span class="rest-timer-settings-modal__duration-label">{{
+              t('units.min')
+            }}</span>
+          </div>
+          <div class="rest-timer-settings-modal__duration-divider" />
+          <div class="rest-timer-settings-modal__duration-block">
+            <van-field
+              v-model="secondsInput"
+              type="digit"
+              input-align="center"
+              class="rest-timer-settings-modal__duration-field"
+              @blur="commitDuration"
+            />
+            <span class="rest-timer-settings-modal__duration-label">{{
+              t('units.sec')
+            }}</span>
+          </div>
         </div>
-        <div class="rest-timer-settings-modal__duration-divider" />
-        <div class="rest-timer-settings-modal__duration-block">
-          <van-field
-            v-model="secondsInput"
-            type="digit"
-            input-align="center"
-            class="rest-timer-settings-modal__duration-field"
-            @blur="commitDuration"
-          />
-          <span class="rest-timer-settings-modal__duration-label">{{
-            t('units.sec')
-          }}</span>
-        </div>
+        <button
+          type="button"
+          class="rest-timer-settings-modal__stepper-btn"
+          @click="adjustDuration(5)"
+        >
+          +
+        </button>
       </div>
-      <button
-        type="button"
-        class="rest-timer-settings-modal__stepper-btn"
-        @click="adjustDuration(5)"
+
+      <div class="rest-timer-settings-modal__sound-row">
+        <span class="rest-timer-settings-modal__sound-label">{{
+          t('restTimer.soundEnabledLabel')
+        }}</span>
+        <van-switch
+          v-model="settingsStore.restTimerSoundEnabled"
+          size="22"
+          @change="uiStore.unlockRestTimerSound()"
+        />
+      </div>
+
+      <div class="rest-timer-settings-modal__sound-row">
+        <button
+          type="button"
+          class="rest-timer-settings-modal__sound-select-btn"
+          @click="showSoundPicker = true"
+        >
+          {{ selectedSoundLabel }}
+          <van-icon name="arrow" size="12" />
+        </button>
+      </div>
+
+      <van-popup
+        v-model:show="showSoundPicker"
+        position="bottom"
+        round
+        teleport="body"
+        class="rest-timer-settings-modal__sound-popup"
       >
-        +
-      </button>
-    </div>
+        <van-picker
+          :columns="soundPickerColumns"
+          :model-value="[settingsStore.restTimerSoundId]"
+          @change="onSoundChange"
+          @confirm="onSoundConfirm"
+          @cancel="showSoundPicker = false"
+        />
+      </van-popup>
+    </template>
   </van-popup>
 </template>
 
 <script setup lang="ts">
+import type { PickerChangeEventParams, PickerConfirmEventParams } from 'vant';
 import type { RestTimerMode } from '~~/types';
-import { useSettingsStore } from '@/stores/settings';
+import { useSettingsStore, restTimerSounds } from '@/stores/settings';
+import { useUiStore } from '@/stores/ui';
 
 defineProps<{
   show: boolean;
@@ -94,6 +133,7 @@ defineEmits<{
 
 const { t } = useI18n();
 const settingsStore = useSettingsStore();
+const uiStore = useUiStore();
 
 const restTimerModes: RestTimerMode[] = ['off', 'auto', 'custom'];
 const restTimerModeLabelKeys: Record<RestTimerMode, string> = {
@@ -101,6 +141,38 @@ const restTimerModeLabelKeys: Record<RestTimerMode, string> = {
   auto: 'restTimer.modeAuto',
   custom: 'restTimer.modeCustom',
 };
+
+const showSoundPicker = ref(false);
+
+const selectedSoundLabel = computed(() => {
+  const sound = restTimerSounds.find(
+    (s) => s.id === settingsStore.restTimerSoundId,
+  );
+  return sound ? t(sound.labelKey) : '';
+});
+
+const soundPickerColumns = computed(() =>
+  restTimerSounds.map((sound) => ({
+    text: t(sound.labelKey),
+    value: sound.id,
+  })),
+);
+
+function selectMode(mode: RestTimerMode) {
+  uiStore.unlockRestTimerSound();
+  settingsStore.restTimerMode = mode;
+}
+
+function onSoundChange({ selectedOptions }: PickerChangeEventParams) {
+  const value = selectedOptions[0]?.value;
+  if (typeof value === 'string') uiStore.previewRestTimerSound(value);
+}
+
+function onSoundConfirm({ selectedOptions }: PickerConfirmEventParams) {
+  const value = selectedOptions[0]?.value;
+  if (typeof value === 'string') settingsStore.restTimerSoundId = value;
+  showSoundPicker.value = false;
+}
 
 const minutesInput = ref(
   String(Math.floor(settingsStore.restTimerDuration / 60)),
@@ -240,6 +312,36 @@ function adjustDuration(delta: number) {
     width: 1px;
     background: var(--van-border-color);
     align-self: stretch;
+  }
+
+  &__sound-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-block-start: 16px;
+  }
+
+  &__sound-label {
+    font-size: 13px;
+    color: var(--van-text-color);
+  }
+
+  &__sound-select-btn {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-inline-start: auto;
+    padding: 6px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--van-border-color);
+    background: transparent;
+    color: var(--van-text-color);
+    font-size: 13px;
+    cursor: pointer;
+  }
+
+  &__sound-popup {
+    width: 100%;
   }
 }
 </style>

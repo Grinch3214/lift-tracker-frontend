@@ -1,6 +1,7 @@
 import { ref } from 'vue';
 import { defineStore } from 'pinia';
 import type { AddSetSheetState } from '~~/types';
+import { useSettingsStore } from '@/stores/settings';
 
 export const useUiStore = defineStore('ui', () => {
   const selectedDate = ref<Date>(new Date());
@@ -27,6 +28,48 @@ export const useUiStore = defineStore('ui', () => {
   });
 
   let timerInterval: ReturnType<typeof setInterval> | null = null;
+  let restTimerAudio: HTMLAudioElement | null = null;
+
+  function getRestTimerAudio(): HTMLAudioElement {
+    if (!restTimerAudio) restTimerAudio = new Audio();
+    return restTimerAudio;
+  }
+
+  function unlockRestTimerSound() {
+    const settingsStore = useSettingsStore();
+    const audio = getRestTimerAudio();
+    audio.src = `/sounds/${settingsStore.restTimerSoundId}.mp3`;
+    audio.muted = true;
+    audio
+      .play()
+      .then(() => {
+        audio.pause();
+        audio.currentTime = 0;
+        audio.muted = false;
+      })
+      .catch(() => {
+        audio.muted = false;
+      });
+  }
+
+  function playSoundFile(soundId: string) {
+    const audio = getRestTimerAudio();
+    audio.src = `/sounds/${soundId}.mp3`;
+    audio.currentTime = 0;
+    audio.muted = false;
+    audio.play().catch(() => {});
+  }
+
+  function playRestTimerSound() {
+    const settingsStore = useSettingsStore();
+    if (!settingsStore.restTimerSoundEnabled) return;
+    playSoundFile(settingsStore.restTimerSoundId);
+  }
+
+  function previewRestTimerSound(soundId?: string) {
+    const settingsStore = useSettingsStore();
+    playSoundFile(soundId ?? settingsStore.restTimerSoundId);
+  }
 
   function tickRestTimer() {
     if (restTimer.value.remaining > 0) {
@@ -34,6 +77,7 @@ export const useUiStore = defineStore('ui', () => {
     } else {
       restTimer.value.active = false;
       if (timerInterval) clearInterval(timerInterval);
+      playRestTimerSound();
     }
   }
 
@@ -69,5 +113,7 @@ export const useUiStore = defineStore('ui', () => {
     resumeRestTimer,
     resetRestTimer,
     stopRestTimer,
+    unlockRestTimerSound,
+    previewRestTimerSound,
   };
 });

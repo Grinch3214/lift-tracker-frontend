@@ -61,7 +61,18 @@
     "settingsTitle": "Rest timer",
     "modeOff": "Off",
     "modeAuto": "Auto",
-    "modeCustom": "Custom"
+    "modeCustom": "Custom",
+    "soundEnabledLabel": "Sound",
+    "sounds": {
+      "shakerBell": "Shaker Bell",
+      "cartoonCloseBell": "Cartoon Bells",
+      "achievementBell": "Achievement Bell",
+      "magicalBell": "Magical Bell",
+      "notificationBell": "Notification Bell",
+      "melodicDoorBell": "Melodic Door Bell",
+      "happyBell": "Happy Bell",
+      "serviceBell": "Service Bell"
+    }
   },
   "units": {
     "kg": "kg",

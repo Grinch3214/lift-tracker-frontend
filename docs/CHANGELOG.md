@@ -202,3 +202,22 @@
 - Dumbbell exercises now have a ×1/×2 toggle in the add/edit-set popup (defaults to ×2), fixing volume being undercounted for two-dumbbell movements. Weight still means "per dumbbell", so PRs are unaffected — only volume sums (day summary, history list, per-exercise history, the per-set "Vol" column) multiply by the selected count. See `CLAUDE.md` for the full breakdown.
 - New "Предплечье" muscle group, 3 exercises: barbell/dumbbell wrist curl, behind-the-back barbell wrist curl. Split out as its own group rather than appended to Biceps, following the same reasoning as the earlier Biceps/Triceps split. Catalog is now 9 groups / 86 exercises total.
 - Back catalog filled in for real: 18 exercises (deadlift, bent-over row ×3 equipment variants, T-bar row, one-arm dumbbell row, seated cable/lever row, lat pulldown ×3 grip variants, vertical pulldown machine, straight-arm pulldown, pull-up ×3 grip variants, hyperextension), replacing the old 6-exercise placeholder set. New "Трапеции" muscle group split out of it, 6 shrug variants (barbell/dumbbell/machine/Smith machine, plain and behind-the-back). New equipment tag `t-bar`, added the same way `smith-machine`/`hammer` were earlier — a genuinely distinct piece of gym equipment, not close enough to barbell/machine/cable to reuse an existing tag. Catalog is now 10 groups / 104 exercises total.
+
+## 2026-08-25
+
+### Added
+
+- Rest timer now plays a sound when it reaches 00:00 (auto and custom modes, natural completion only — manual stop/reset stay silent). 8 local bell/notification sounds bundled under `public/sounds/`, selectable via a picker in the rest-timer settings modal (previews audibly as you scroll through options — no separate preview button needed), plus an on/off toggle (default on). Sound files are served from `public/` (not `app/assets/`) since they're referenced dynamically by URL at playback time, not imported by a component.
+
+### Changed
+
+- `settingsStore.restTimerMode` now defaults to `'off'` instead of `'auto'` — the timer got noisier (a sound, not just a silent banner), so it's opt-in from a clean install rather than on by default.
+
+### Fixed
+
+- The sound picker always opened scrolled to the first option, even when a different sound was already selected (e.g. the 5th one) — `van-picker` wasn't told what the current value was. Fixed by binding `:model-value` to the saved `restTimerSoundId`.
+
+### Notes
+
+- Browser audio-autoplay policy requires a real user gesture before `Audio.play()` is reliably allowed, especially on mobile Safari, which additionally ties the unlock to the *specific* `<audio>` element used later. Handled by reusing one `HTMLAudioElement` (`app/stores/ui.ts`), "unlocked" with a muted play+immediate-pause called synchronously from the settings modal's mode-select and sound-toggle click/change handlers — not from a reactive `watch` (those can fire on page load via `{immediate:true}`, which isn't a real gesture).
+- Future idea captured in `docs/02-mvp.md` under v1.1: once the app goes PWA, extend this to real Notifications (sound / notification / both) for when the app is backgrounded — not implemented yet, just recorded.

@@ -61,7 +61,18 @@
     "settingsTitle": "Таймер отдыха",
     "modeOff": "Выкл",
     "modeAuto": "Авто",
-    "modeCustom": "Кастом"
+    "modeCustom": "Кастом",
+    "soundEnabledLabel": "Звук",
+    "sounds": {
+      "shakerBell": "Шейкер",
+      "cartoonCloseBell": "Мультяшные колокольчики",
+      "achievementBell": "Колокол достижения",
+      "magicalBell": "Волшебный колокольчик",
+      "notificationBell": "Колокольчик-уведомление",
+      "melodicDoorBell": "Дверной мелодичный колокольчик",
+      "happyBell": "Весёлый колокольчик",
+      "serviceBell": "Сервисный колокольчик"
+    }
   },
   "units": {
     "kg": "кг",
