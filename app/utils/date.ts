@@ -9,6 +9,12 @@ export function isToday(dateStr: string): boolean {
   return dateStr === formatDate(new Date());
 }
 
+export function addDays(date: Date, days: number): Date {
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
+  return next;
+}
+
 export function parseDate(dateStr: string): Date {
   const parts = dateStr.split('-');
   const year = Number(parts[0]);
@@ -19,6 +25,10 @@ export function parseDate(dateStr: string): Date {
 
 export function formatDateLabel(dateStr: string, locale: string): string {
   return parseDate(dateStr).toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+export function formatShortDate(date: Date, locale: string): string {
+  return date.toLocaleDateString(locale, { day: 'numeric', month: 'short' });
 }
 
 export function formatWeekdayLabel(date: Date, locale: string): string {

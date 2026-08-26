@@ -2,6 +2,7 @@ import { computed } from 'vue';
 import { defineStore } from 'pinia';
 import { useStorage } from '@vueuse/core';
 import type { Workout, WorkoutExercise, SetEntry } from '~~/types';
+import { generateId } from '@/utils/id';
 
 export interface ExerciseHistoryEntry {
   workoutId: string;
@@ -23,7 +24,7 @@ export const useWorkoutStore = defineStore('workout', () => {
     let workout = getWorkoutByDate(date);
     if (!workout) {
       workout = {
-        id: crypto.randomUUID(),
+        id: generateId(),
         date,
         exercises: [],
         createdAt: new Date().toISOString(),
@@ -35,13 +36,9 @@ export const useWorkoutStore = defineStore('workout', () => {
 
   function addExercise(date: string, exerciseId: string): WorkoutExercise {
     const workout = getOrCreateWorkoutByDate(date);
-    const existing = workout.exercises.find(
-      (exercise) => exercise.exerciseId === exerciseId,
-    );
-    if (existing) return existing;
 
     const workoutExercise: WorkoutExercise = {
-      id: crypto.randomUUID(),
+      id: generateId(),
       exerciseId,
       sets: [],
       order: workout.exercises.length,
@@ -65,20 +62,40 @@ export const useWorkoutStore = defineStore('workout', () => {
     }
   }
 
+  function reorderExercises(date: string, orderedIds: string[]): void {
+    const workout = getWorkoutByDate(date);
+    if (!workout) return;
+
+    const byId = new Map(
+      workout.exercises.map((exercise) => [exercise.id, exercise]),
+    );
+    workout.exercises = orderedIds
+      .map((id) => byId.get(id))
+      .filter(
+        (exercise): exercise is WorkoutExercise => exercise !== undefined,
+      );
+    workout.exercises.forEach((exercise, index) => {
+      exercise.order = index;
+    });
+  }
+
+  type SetValues = Pick<
+    SetEntry,
+    'weight' | 'reps' | 'durationSeconds' | 'distanceKm' | 'dumbbellCount'
+  >;
+
   function addSet(
     date: string,
     workoutExerciseId: string,
-    weight: number,
-    reps: number,
+    values: SetValues,
   ): void {
     const workout = getWorkoutByDate(date);
     const exercise = workout?.exercises.find((e) => e.id === workoutExerciseId);
     if (!exercise) return;
 
     exercise.sets.push({
-      id: crypto.randomUUID(),
-      weight,
-      reps,
+      id: generateId(),
+      ...values,
       isCompleted: true,
     });
   }
@@ -87,16 +104,14 @@ export const useWorkoutStore = defineStore('workout', () => {
     date: string,
     workoutExerciseId: string,
     setId: string,
-    weight: number,
-    reps: number,
+    values: SetValues,
   ): void {
     const workout = getWorkoutByDate(date);
     const exercise = workout?.exercises.find((e) => e.id === workoutExerciseId);
     const set = exercise?.sets.find((s) => s.id === setId);
     if (!set) return;
 
-    set.weight = weight;
-    set.reps = reps;
+    Object.assign(set, values);
   }
 
   function removeSet(
@@ -120,27 +135,26 @@ export const useWorkoutStore = defineStore('workout', () => {
         workout.exercises.some((e) => e.exerciseId === exerciseId),
       )
       .map((workout) => {
-        const exercise = workout.exercises.find(
-          (e) => e.exerciseId === exerciseId,
-        )!;
+        const sets = workout.exercises
+          .filter((e) => e.exerciseId === exerciseId)
+          .flatMap((e) => e.sets);
         const maxWeight =
-          exercise.sets.length > 0
-            ? Math.max(...exercise.sets.map((s) => s.weight))
-            : 0;
-        const totalVolume = exercise.sets.reduce(
-          (sum, s) => sum + s.weight * s.reps,
+          sets.length > 0 ? Math.max(...sets.map((s) => s.weight ?? 0)) : 0;
+        const totalVolume = sets.reduce(
+          (sum, s) =>
+            sum + (s.weight ?? 0) * (s.dumbbellCount ?? 1) * (s.reps ?? 0),
           0,
         );
         const bestSet =
-          exercise.sets.length > 0
-            ? exercise.sets.reduce((best, s) =>
-                s.weight > best.weight ? s : best,
+          sets.length > 0
+            ? sets.reduce((best, s) =>
+                (s.weight ?? 0) > (best.weight ?? 0) ? s : best,
               )
             : null;
         return {
           workoutId: workout.id,
           date: workout.date,
-          sets: exercise.sets,
+          sets,
           maxWeight,
           totalVolume,
           bestSet,
@@ -158,11 +172,10 @@ export const useWorkoutStore = defineStore('workout', () => {
     let pr = { weight: 0, reps: 0, date: '' };
     history.forEach((entry) => {
       entry.sets.forEach((set) => {
-        if (
-          set.weight > pr.weight ||
-          (set.weight === pr.weight && set.reps > pr.reps)
-        ) {
-          pr = { weight: set.weight, reps: set.reps, date: entry.date };
+        const weight = set.weight ?? 0;
+        const reps = set.reps ?? 0;
+        if (weight > pr.weight || (weight === pr.weight && reps > pr.reps)) {
+          pr = { weight, reps, date: entry.date };
         }
       });
     });
@@ -175,6 +188,7 @@ export const useWorkoutStore = defineStore('workout', () => {
     getOrCreateWorkoutByDate,
     addExercise,
     removeExercise,
+    reorderExercises,
     addSet,
     updateSet,
     removeSet,

@@ -4,4 +4,7 @@ export type EquipmentType =
   | 'dumbbell'
   | 'machine'
   | 'cable'
-  | 'bodyweight';
+  | 'bodyweight'
+  | 'smith-machine'
+  | 'hammer'
+  | 't-bar';

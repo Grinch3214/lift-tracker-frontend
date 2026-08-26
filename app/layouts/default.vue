@@ -9,13 +9,13 @@
     <van-button
       type="primary"
       icon="plus"
+      size="small"
       class="add-day"
       @click="uiStore.exercisePicker.show = true"
     />
 
     <WorkoutExercisePicker />
     <WorkoutAddSetSheet />
-    <HistoryExerciseHistoryModal />
   </van-config-provider>
 </template>
 
@@ -34,15 +34,17 @@ const uiStore = useUiStore();
   background-color: var(--lt-main-bg-color);
   color: var(--lt-main-color);
 }
+main {
+  // Reserve space below page content.
+  padding-block-end: 60px;
+}
 .add-day {
-  --van-button-normal-padding: 0 10px;
-
   width: 48px;
   height: 48px;
   position: fixed;
   z-index: 4;
-  bottom: calc(var(--van-tabbar-height, 50px) + 24px);
-  right: 24px;
-  box-shadow: 0 4px 16px rgba(60, 142, 224, 0.4);
+  inset-block-end: calc(var(--van-tabbar-height, 50px) + 24px);
+  inset-inline-end: 24px;
+  box-shadow: 0 4px 16px rgb(var(--van-primary-color-channels) / 40%);
 }
 </style>

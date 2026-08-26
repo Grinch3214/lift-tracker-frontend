@@ -2,6 +2,18 @@
 *::before,
 *::after {
   box-sizing: border-box;
+  // for firefox
+  scrollbar-width: thin;
+}
+
+/* For Chrome, Edge, Safari */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-thumb {
+  border-radius: 3px;
 }
 
 html,

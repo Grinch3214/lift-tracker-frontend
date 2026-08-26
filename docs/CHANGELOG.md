@@ -59,6 +59,8 @@
 - Full Russian translation of the UI copy and the exercise catalog (6 muscle groups, ~35 exercise names, equipment labels).
 - `app/utils/pluralize.ts` — correct Russian plural forms (one/few/many) for counted nouns ("1 упражнение" / "2 упражнения" / "5 упражнений"), not just naive number interpolation.
 - Vant's own component locale (calendar, etc.) now switches together with the app language (`en-US` / `ru-RU`).
+- Delete-set now asks for confirmation before removing a logged set, mirroring the existing delete-exercise confirmation.
+- Swipe navigation on the Workout page: swipe left/right to move ±1 day, with a direction-aware slide/fade transition (`useSwipe` from VueUse, `app/utils/date.ts#addDays`).
 
 ### Changed
 
@@ -71,3 +73,151 @@
 
 - Locale-sync logic was originally a Nuxt plugin calling `useI18n()`, which crashed the app on load ("Must be called at the top of a setup function") — moved into `app.vue`'s `<script setup>`, which has a guaranteed valid composition context.
 - Muscle-group/set counts showed grammatically wrong Russian ("1 упражнений") before the pluralization fix above.
+- PR badge was shown on every set tied at the record weight instead of just the most recent one — `ExerciseCard.vue` now picks a single set to badge (`prSetId`, the last qualifying set) instead of testing each set independently.
+- Cancelling a delete confirmation dialog threw an unhandled promise rejection ("Uncaught (in promise) cancel") — Vant's `showConfirmDialog` rejects on cancel; both `removeSet`/`removeExercise` in `index.vue` now wrap it in try/catch.
+
+## 2026-08-14
+
+### Added
+
+- Left-side menu (`TheSidebar.vue`, `van-popup position="left"`), opened via a new burger icon in the header (replaces the old inline EN/RU text toggle): placeholder menu list at the top (commented-out `v-for` scaffold until real menu content is decided), an accent-color picker, and EN/RU language buttons underneath.
+- Selectable accent color (7 presets), persisted to `localStorage` via a new `app/stores/settings.ts`, applied app-wide through CSS custom properties.
+- Language buttons in the sidebar are generated from `useI18n().locales` instead of being hardcoded — adding a third language later needs no template changes.
+- History list now shows the muscle groups trained that day (deduplicated, e.g. "Chest, Back, Legs") instead of the full exercise name list.
+
+### Changed
+
+- Adopted BEM (`block__element`, SCSS `&`-nesting) across every component's `<style>` block, plus logical CSS properties (`margin-block-end`, `border-block-start`, `inset-inline-end`, etc.) in place of physical ones for single-edge declarations.
+- Unified the app's accent color: `--van-primary-color` is now set dynamically from the picker instead of being partly Vant's own default (`#1989fa`, via `var(--van-primary-color)` in most components) and partly a second, different hardcoded blue (`#3c8ee0`, in the calendar and tab bar). A second variable, `--van-primary-color-channels` (bare "R G B", no `rgb()` wrapper), lets components compose translucent variants (`rgb(var(...) / 40%)`) without touching Vant's own variable, which must stay a full color.
+- Extracted the "·" separator dot (used identically in the history list and the exercise-history modal) into a shared `.dot` utility in `app/assets/scss/_global.scss` instead of duplicating the rule in both components.
+- Added `viewport-fit=cover` to the viewport meta tag so `env(safe-area-inset-bottom)` (used for the sidebar's bottom padding) resolves to a real value instead of always being `0px`.
+- Removed the manual `padding-block-end` / `padding-block: ... var(--van-tabbar-height)` workarounds in `EmptyState.vue` and `history.vue` — no longer needed now that the tab bar reserves its own space via `placeholder`.
+
+### Fixed
+
+- `RestTimer.vue` was missed during the color-picker work and still used the old hardcoded `rgba(60, 142, 224, ...)` blue — now follows the selected accent color like everything else.
+- History list could overflow horizontally when a workout had many/long exercise names — root cause was a flex child with `white-space: nowrap` and no `min-width: 0`, so it refused to shrink and pushed the page wider than the viewport instead of truncating. Fixed at the source (`min-width: 0` on `.workout-item__group-names`) rather than papering over it with `overflow-x: hidden` on `<main>`.
+- The Workout page's exercise/sets summary line could render hidden behind the fixed bottom tab bar on short days — `van-tabbar` now uses Vant's own `placeholder` prop, which reserves real layout space for it instead of floating over content.
+- The floating "+" button could likewise cover the last line of content (e.g. that same summary line) — `<main>` now reserves clearance for it at the layout level (`default.vue`), not per-page.
+- Opening any popup/action-sheet/calendar (Vant locks page scroll via `overflow: hidden` on `<body>`) shifted page content sideways on desktop browsers with classic, space-reserving scrollbars. `scrollbar-gutter: stable` is scoped to `body.van-overflow-hidden` — the exact class Vant toggles for the lock — so the reserved space appears and disappears together with the real scrollbar instead of being reserved permanently (which looked like a bare gutter on the right at all times). No effect on real mobile devices, where scrollbars are overlay and never reserve space to begin with.
+
+### Notes
+
+- Accent-color customization wasn't in the original MVP scope (`docs/02-mvp.md`) but was built now rather than later — see `docs/00-vision.md` for why.
+
+## 2026-08-15
+
+### Added
+
+- Multi-select in the exercise picker (tap to toggle, sticky "Добавить | N" adds all at once).
+- Drag-and-drop reordering of exercises within a day (press-and-hold, new dep: `@vueuse/integrations`'s `useSortable`).
+- Logging the same exercise more than once per day is now allowed.
+- Autofocus on the weight field when the add-set popup opens.
+
+### Changed
+
+- `workoutStore.addExercise` no longer merges duplicates by `exerciseId` — always creates a new entry; `getExerciseHistory` now aggregates across all of a day's matches instead of just the first.
+- `AddSetSheet.vue` is a centered popup now, not a bottom-sheet drawer.
+- `TheSidebar.vue`: EN/RU buttons moved up next to the close icon (circular, matches the color swatches — sized for a future flag-icon swap), color-picker row is horizontally scrollable with its native scrollbar hidden.
+- Exercise-card spacing switched from per-card margin to a single `gap` on the list container — margins on adjacent flex items don't collapse, so the old approach silently doubled the visual gap.
+
+### Fixed
+
+- `crypto.randomUUID` isn't available over plain HTTP by LAN IP (insecure context) — crashed id-generation when testing on a phone. New `app/utils/id.ts#generateId()` fallback.
+- On-screen keyboard could cover the add-set popup on a real phone — fixed via `interactive-widget=resizes-content` on the viewport meta.
+
+### Removed
+
+- Per-exercise history popup (title-tap on an exercise card) — not discoverable, and long-pressing text to start a drag triggered native text-selection instead. `/history` already covers this at the day level; `docs/02-mvp.md`/`03-roadmap.md` updated.
+
+### Notes
+
+- Two gotchas from this work are documented in `CLAUDE.md` rather than here: nested-reactive-array tracking (`index.vue`'s `useSortable` working copy) and vue-i18n parsing a literal `|` as its plural separator even through plain `t()`.
+
+## 2026-08-16
+
+### Changed
+
+- Chest catalog expanded from 6 to 25 exercises (barbell/dumbbell/Smith-machine variants for flat/incline/decline press, lever crossover, hammer press, pec deck, cable crossover variants, pullover variants, etc.) — the old placeholder list is gone, ids `bench-press`/`incline-bench-press`/`dumbbell-press` no longer exist (breaks any saved workout referencing them, fine pre-launch).
+- Two new equipment tags: `smith-machine`, `hammer`.
+- `<script setup>` field order standardized across all components (see `CLAUDE.md`): imports → props → emits → router/Nuxt composables (`useHead`, `useI18n`, etc.) → our own Pinia stores → component logic → `defineExpose` → lifecycle hooks.
+- `AddSetSheet.vue` is a centered popup instead of a bottom-sheet drawer; autofocuses the weight field on open.
+- Exercise-card spacing uses a single `gap` on the list container instead of per-card margin.
+- `TheSidebar.vue`: locale buttons moved next to the close icon (circular, matches the color swatches), color-picker row scrolls horizontally with its native scrollbar hidden.
+
+### Fixed
+
+- Leftover debug `console.log`s in `ExercisePicker.vue` removed.
+
+## 2026-08-17
+
+### Added
+
+- Chest catalog expanded to 25 exercises (barbell/dumbbell/Smith-machine variants of flat/incline/decline press, lever crossover, hammer press, pec deck, cable-crossover variants, pullover variants, etc.); two new equipment tags, `smith-machine` and `hammer`.
+- New "Cardio" muscle group, 9 exercises: bodyweight/rep-based ones (burpee, mountain climber, battle ropes) plus 6 duration/distance machines (treadmill, stationary bike, stepper, stair climber, elliptical, rowing machine).
+- Exercises now log either weight+reps or time+distance, chosen per exercise (`Exercise.trackingType`) — `AddSetSheet.vue` shows the matching pair of fields, `ExerciseCard.vue` shows matching table columns. See `CLAUDE.md` for the full shape.
+- Users can create their own muscle groups and exercises from the exercise picker ("+" next to the close icon — add-group when browsing groups, add-exercise once inside one, with a name, equipment tag, and weight-reps/time-distance choice). Persisted separately from the built-in catalog (`app/stores/catalog.ts`), never touching the static seed data. Custom names are shown as typed, not run through i18n (no translation key exists for them).
+- Custom exercises/groups can be edited and deleted — swipe a custom cell in the picker to reveal Edit/Delete. Built-in catalog entries can't be touched (by design, see `CLAUDE.md`). Deleting is a soft-delete: it disappears from the picker but past workouts that used it keep displaying correctly.
+- The exercise picker's muscle-group list and each group's exercise list are drag-and-drop reorderable — unlike edit/delete, this covers built-in entries too, not just custom ones (e.g. drag "Ноги" above "Грудь"). Order is stored separately from the entries themselves (`catalogStore.groupOrder`/`exerciseOrder`), since built-in entries have no per-user field to hold a custom position.
+
+### Changed
+
+- `workoutStore.addSet`/`updateSet` take a `values` object instead of positional `weight, reps` args.
+- PR badge and the add-set popup's "last session" hint don't apply to time-distance exercises (not computed at all, not just hidden).
+- `ExercisePicker.vue` now builds its own header (title + "+" + close) instead of using `van-action-sheet`'s built-in one, to fit the new "+" button; the text "← Назад" link inside a group is now a back-arrow icon in the header instead.
+- Exercise cards show a small "☰" icon on the left as a visual hint that they're drag-reorderable — purely a hint, doesn't change the drag target (still the whole card).
+
+### Notes
+
+- Chest/Cardio are the only muscle groups filled in with real data so far — the rest still hold the original small placeholder set.
+- "Создание своих упражнений" was explicitly out of MVP scope until now — `docs/02-mvp.md`/`03-roadmap.md` updated to reflect that it's built.
+
+## 2026-08-18
+
+### Added
+
+- Rest timer is now configurable from the sidebar, with 3 mutually exclusive modes: off, auto (existing behavior, now with a configurable duration instead of a fixed 90s), and custom (a permanently visible banner with manual start/pause/reset controls, no auto-start on logging a set). See `CLAUDE.md` for the full behavior breakdown.
+
+### Changed
+
+- Rest timer settings moved out of the sidebar's own body into a dedicated modal, opened via a "Таймер отдыха" menu item — keeps the drawer itself short and leaves room for future menu items.
+- Duration is now entered as separate minutes/seconds fields instead of raw seconds, plus ±5s buttons that carry correctly between the two (e.g. `55s + 5s → 1:00`).
+- The duration control is shown for both auto and custom modes (previously auto-only) — a custom-mode user no longer has to switch to auto just to change the number, and changing it while idle in custom mode updates the banner immediately instead of requiring a manual reset or page reload.
+
+### Fixed
+
+- The rest-timer settings modal opened pinned to the sidebar's left edge instead of centered on screen — it's a popup nested inside another popup (the sidebar), and Vant's popups center via a permanent CSS `transform`, which makes a non-teleported nested popup center against its transformed ancestor instead of the viewport. Fixed with `teleport="body"`.
+
+## 2026-08-19
+
+### Changed
+
+- "Руки" muscle group replaced with "Бицепс" — 13 curated biceps exercises (barbell/machine/cable/dumbbell curl variants, preacher curl, concentration curl, overhead cable curl, hammer curl, reverse-grip chin-up) replacing the old 6-exercise arms placeholder set (which mixed biceps and triceps movements together). A separate "Трицепс" group is expected once that list is provided.
+
+## 2026-08-21
+
+### Added
+
+- New "Трицепс" muscle group, 14 exercises: close-grip bench press (barbell/Smith machine), lying/seated skull crusher, seated/lying dumbbell extension, single-arm overhead extension, machine extension, overhead cable extension, cable pushdown, dumbbell kickback, triceps dip (bodyweight/machine), bench dip. Catalog is now 8 groups / 83 exercises total.
+- Dumbbell exercises now have a ×1/×2 toggle in the add/edit-set popup (defaults to ×2), fixing volume being undercounted for two-dumbbell movements. Weight still means "per dumbbell", so PRs are unaffected — only volume sums (day summary, history list, per-exercise history, the per-set "Vol" column) multiply by the selected count. See `CLAUDE.md` for the full breakdown.
+- New "Предплечье" muscle group, 3 exercises: barbell/dumbbell wrist curl, behind-the-back barbell wrist curl. Split out as its own group rather than appended to Biceps, following the same reasoning as the earlier Biceps/Triceps split. Catalog is now 9 groups / 86 exercises total.
+- Back catalog filled in for real: 18 exercises (deadlift, bent-over row ×3 equipment variants, T-bar row, one-arm dumbbell row, seated cable/lever row, lat pulldown ×3 grip variants, vertical pulldown machine, straight-arm pulldown, pull-up ×3 grip variants, hyperextension), replacing the old 6-exercise placeholder set. New "Трапеции" muscle group split out of it, 6 shrug variants (barbell/dumbbell/machine/Smith machine, plain and behind-the-back). New equipment tag `t-bar`, added the same way `smith-machine`/`hammer` were earlier — a genuinely distinct piece of gym equipment, not close enough to barbell/machine/cable to reuse an existing tag. Catalog is now 10 groups / 104 exercises total.
+
+## 2026-08-25
+
+### Added
+
+- Rest timer now plays a sound when it reaches 00:00 (auto and custom modes, natural completion only — manual stop/reset stay silent). 8 local bell/notification sounds bundled under `public/sounds/`, selectable via a picker in the rest-timer settings modal (previews audibly as you scroll through options — no separate preview button needed), plus an on/off toggle (default on). Sound files are served from `public/` (not `app/assets/`) since they're referenced dynamically by URL at playback time, not imported by a component.
+
+### Changed
+
+- `settingsStore.restTimerMode` now defaults to `'off'` instead of `'auto'` — the timer got noisier (a sound, not just a silent banner), so it's opt-in from a clean install rather than on by default.
+
+### Fixed
+
+- The sound picker always opened scrolled to the first option, even when a different sound was already selected (e.g. the 5th one) — `van-picker` wasn't told what the current value was. Fixed by binding `:model-value` to the saved `restTimerSoundId`.
+
+### Notes
+
+- Browser audio-autoplay policy requires a real user gesture before `Audio.play()` is reliably allowed, especially on mobile Safari, which additionally ties the unlock to the *specific* `<audio>` element used later. Handled by reusing one `HTMLAudioElement` (`app/stores/ui.ts`), "unlocked" with a muted play+immediate-pause called synchronously from the settings modal's mode-select and sound-toggle click/change handlers — not from a reactive `watch` (those can fire on page load via `{immediate:true}`, which isn't a real gesture).
+- Future idea captured in `docs/02-mvp.md` under v1.1: once the app goes PWA, extend this to real Notifications (sound / notification / both) for when the app is backgrounded — not implemented yet, just recorded.

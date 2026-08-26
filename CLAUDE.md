@@ -21,7 +21,7 @@ No test suite yet — there is no automated correctness gate. Verify changes by 
 
 ## Architecture
 
-**Stack:** Nuxt 4 + TypeScript + Pinia (`@pinia/nuxt`) + Vant 4 (`@vant/nuxt`) + VueUse (`@vueuse/nuxt`) + `@nuxtjs/i18n` + SCSS.
+**Stack:** Nuxt 4 + TypeScript + Pinia (`@pinia/nuxt`) + Vant 4 (`@vant/nuxt`) + VueUse (`@vueuse/nuxt`) + `@nuxtjs/i18n` + SCSS. Drag-and-drop reordering uses `@vueuse/integrations`'s `useSortable` (wraps `sortablejs`) — neither Vant nor `@vueuse/core` has a list-reorder primitive.
 
 **No backend.** Everything lives in the browser. All persistence is `localStorage` via VueUse's `useStorage`, wrapped inside Pinia stores.
 
@@ -31,26 +31,111 @@ No test suite yet — there is no automated correctness gate. Verify changes by 
 
 **Path aliases:** `@/*` → `app/*` (Nuxt default). `~~/*` / `@@/*` → repo root — used for `types/*` since `types/` lives outside `app/` (e.g. `import type { Workout } from '~~/types'`).
 
+**Accent color is one CSS variable, not per-component props.** `settingsStore.primaryColor` (`app/stores/settings.ts`) holds bare "R G B" channels (e.g. `"60 142 224"`, no `rgb()` wrapper, no commas), persisted via `useStorage`. `app/app.vue` watches it and sets two `document.documentElement` custom properties: `--van-primary-color` (`rgb(R G B)`, a complete color — Vant's own component CSS reads this directly, e.g. `.van-button--primary { background: var(--van-primary-color) }`, so it must never be just bare channels) and `--van-primary-color-channels` (the bare channels themselves, for spots that need a translucent variant: `rgb(var(--van-primary-color-channels) / 40%)`). Don't reintroduce a hardcoded color literal anywhere — pull from one of these two variables, or from `settingsStore.primaryColorCss` (the `rgb(...)`-wrapped computed, for places that need a full color as a JS value, e.g. a `van-calendar :color` prop).
+
+**Styling convention: BEM + SCSS nesting, scoped by default.** Every component's `<style scoped>` is one root block class matching the component's role (e.g. `.exercise-card`, `.sidebar`), with `&__element` for its parts and bare `&.modifier`-style classes for state (`is-pr`, `active` — not `&--modifier`). Single-edge physical properties (`margin-bottom`, `border-top`, positioned `bottom`/`right`, etc.) are written as logical properties (`margin-block-end`, `border-block-start`, `inset-inline-end`) instead; multi-value shorthands (`padding: 14px 14px 10px`) are left physical. Global SCSS (`app/assets/scss/`) is reserved for things that don't belong to one component: reset, design tokens (`_varibles.scss`), mixins, and the rare utility class that's genuinely identical (not just similar) across components with zero per-usage overrides — e.g. `.dot`, the "·" stat separator. If you're tempted to add component-shaped CSS (a block with its own look) to a global file instead of the component's own `scoped` style, don't — that's what `scoped` exists to avoid re-litigating.
+
+**`<script setup>` structure — fixed top-to-bottom order in every component:**
+1. Imports — only what Nuxt doesn't auto-import (Vue reactivity APIs like `ref`/`computed`/`watch`/`onMounted`, and `useXStore`/`useI18n`/`useRoute` etc. are auto-imported; don't add explicit imports for them).
+2. `defineProps<...>()`
+3. `defineEmits<...>()`
+4. Router / Nuxt & module composables — `useRoute()`, `useRouter()`, `useHead()`, `useSeoMeta()`, `useI18n()`, etc. (anything framework/module-provided, not ours)
+5. Stores — `useXStore()` (our own Pinia stores only)
+6. Component logic — refs, computed, functions, `watch(...)`, roughly in that order; a short comment banner ahead of each distinct logical group is fine, but don't force one for a single line
+7. `defineExpose(...)`
+8. Lifecycle hooks — `onMounted`, etc.
+
+Skip sections that don't apply (most components have no props/emits/router/expose) rather than leaving an empty placeholder.
+
 ## Data flow
 
 ```
-types/*.ts                 ← shared interfaces: MuscleGroup, Exercise, Workout, WorkoutExercise, SetEntry, EquipmentType
-                              all ids are string (crypto.randomUUID() at creation time)
+types/*.ts                 ← shared interfaces: MuscleGroup, Exercise, Workout, WorkoutExercise, SetEntry,
+                              EquipmentType, TrackingType. All ids are string, generated via
+                              app/utils/id.ts#generateId() at creation time
 
-app/data/muscle-groups.ts  ← static seed data: 6 muscle groups, ~35 exercises (id, name, muscleGroupId, equipment).
-                              `name` here is an English dev fallback only — never rendered directly, see i18n below.
-app/utils/exercises.ts     ← lookups over the static catalog: getExerciseById, getMuscleGroupById, getExercisesByMuscleGroup
-app/utils/date.ts          ← formatDate/parseDate ('YYYY-MM-DD' string <-> Date), isToday, formatDateLabel/formatWeekdayLabel (locale-aware, take a locale string)
+app/utils/id.ts             ← generateId() — crypto.randomUUID() when available, otherwise a
+                              crypto.getRandomValues()-based UUID v4 fallback. Needed because randomUUID() only
+                              exists in secure contexts (HTTPS/localhost); opening the dev server from a phone
+                              over plain HTTP by LAN IP (`--host`) is not secure, so it's undefined there even
+                              though `crypto` itself exists — throws "crypto.randomUUID is not a function" at
+                              the first id-generating action. Always use this helper, never call
+                              crypto.randomUUID() directly.
+
+app/data/muscle-groups.ts  ← static seed data: 10 muscle groups, 104 exercises (id, name, muscleGroupId,
+                              equipment, trackingType). `name` here is an English dev fallback only — never
+                              rendered directly, see i18n below. Being filled in for real muscle-group by
+                              muscle-group (chest, back, trapezius, cardio, biceps, triceps, forearm done —
+                              "arms" no longer exists as a group, split into separate "biceps"/"triceps"/
+                              "forearm" groups; "trapezius" split out of "back" the same way); shoulders/legs/
+                              core still hold the original ~6-per-group placeholder set from the initial
+                              rebuild.
+app/utils/exercises.ts     ← lookups merging the static catalog with user-created entries from
+                              app/stores/catalog.ts: getAllMuscleGroups, getExerciseById, getMuscleGroupById,
+                              getExercisesByMuscleGroup (custom entries first, so a freshly-added one shows at
+                              the top of its group without scrolling). Also exerciseName(exercise, t) /
+                              muscleGroupName(group, t) — the display-name resolver, see the note below on why
+                              this can't just be t(`catalog.exercises.${id}`) everywhere anymore.
+app/utils/date.ts          ← formatDate/parseDate ('YYYY-MM-DD' string <-> Date), isToday, formatDateLabel/formatWeekdayLabel (locale-aware, take a locale string), addDays
 app/utils/format.ts        ← isBodyweight(weight) — the "kg"/"BW" text itself comes from translations, not from this util
 app/utils/pluralize.ts     ← pluralize(count, {one, few, many}) — Russian has 3 plural forms, not 2; see i18n below
 
 app/stores/workout.ts      ← THE store. workouts: Workout[] persisted via useStorage('lift-tracker-workouts').
-                              One Workout per date (getOrCreateWorkoutByDate enforces this). CRUD: addExercise,
-                              removeExercise, addSet, updateSet, removeSet. Also getExerciseHistory(exerciseId)
-                              and getPersonalRecord(exerciseId) — used for the PR badge and the history popup.
+                              One Workout per date (getOrCreateWorkoutByDate enforces this). CRUD: addExercise
+                              (always creates a new WorkoutExercise, even if that exerciseId is already logged
+                              that day — intentional, e.g. same exercise at the start and end of a session),
+                              removeExercise, reorderExercises(date, orderedIds) (persists drag-and-drop order,
+                              re-syncs WorkoutExercise.order to match), addSet(date, workoutExerciseId, values),
+                              updateSet(date, workoutExerciseId, setId, values) — values is a partial
+                              {weight?, reps?, durationSeconds?, distanceKm?, dumbbellCount?}, not positional
+                              args, since which pair is populated depends on the exercise's trackingType (see
+                              below), removeSet.
+                              Also getExerciseHistory(exerciseId) (aggregates sets across ALL same-day entries
+                              for that exerciseId, not just the first match — matters now that duplicates
+                              exist; treats missing weight/reps as 0 rather than assuming every set has them)
+                              and getPersonalRecord(exerciseId) — used for the PR badge and the "last session"
+                              hint in the add-set popup.
 app/stores/ui.ts           ← UI-only state, not persisted: selectedDate (drives which day is shown on Workout page),
-                              addSetSheet (bottom-sheet state), exercisePicker (show flag), historyExerciseId
-                              (which exercise's history popup is open), restTimer (90s countdown + start/stop)
+                              addSetSheet (add/edit-set popup state — the name is historical, it's rendered
+                              as a centered popup now, not a bottom sheet), exercisePicker (show flag),
+                              restTimer ({active, remaining, total}, countdown driven by a module-scope
+                              setInterval shared across the store singleton's lifetime — not persisted, resets
+                              on page reload). startRestTimer(seconds)/stopRestTimer() (unconditional start/stop),
+                              resumeRestTimer() (continues from current `remaining` without resetting it — used
+                              by custom mode's pause/play toggle), resetRestTimer(seconds) (stops AND rewinds
+                              to a fresh duration, active:false — used by custom mode's reset button). See
+                              settings.ts below for the 3 modes that decide which of these get called when.
+                              Also owns rest-timer sound playback — a module-scope `HTMLAudioElement` (same
+                              "runtime handle, not a ref" category as `timerInterval`), `unlockRestTimerSound()`
+                              (muted play+immediate-pause, for the browser audio-autoplay gesture requirement —
+                              see the note below), `previewRestTimerSound()` (always audible, ignores the sound
+                              toggle), and `playRestTimerSound()` (internal only, gated on the toggle, called
+                              from exactly one place — see below). This is the one place in the app where a
+                              store reaches into another store's `useXStore()` from inside its own `setup()`
+                              (explicit import, not auto-import, matching how `app/utils/exercises.ts` already
+                              imports `useCatalogStore`) — necessary because only `ui.ts` can distinguish
+                              "timer reached zero" from "user manually stopped/reset it".
+app/stores/settings.ts     ← persisted user preferences: primaryColor, restTimerMode ('off'|'auto'|'custom',
+                              see the note below on what each does — defaults to 'off'), restTimerDuration
+                              (seconds, used by auto-mode's auto-start and as the reset target in custom mode),
+                              restTimerSoundEnabled (bool, default true), restTimerSoundId (string, default the
+                              first entry in restTimerSounds). Also exports colorPresets (plain const, not store
+                              state) — the 7 selectable accent-color options — and restTimerSounds (same pattern):
+                              a plain `{id, labelKey}[]` catalog, `id` doubles as the mp3 basename under
+                              `public/sounds/` so no separate `file` field is needed.
+app/stores/catalog.ts      ← user-created catalog additions, persisted separately from the static seed data:
+                              customMuscleGroups ('lift-tracker-custom-muscle-groups'), customExercises
+                              ('lift-tracker-custom-exercises'). addMuscleGroup(name) pushes (new custom groups
+                              sort after the built-in ones); addExercise(name, muscleGroupId, equipment,
+                              trackingType) unshifts (newest custom exercise shows first in its group).
+                              updateMuscleGroup/updateExercise mutate in place (a rename is meant to show up in
+                              past history too, not just new entries). deleteMuscleGroup/deleteExercise are
+                              soft-deletes — they set isDeleted, never remove the array entry, see the note
+                              below on why. Never read these arrays directly outside app/utils/exercises.ts —
+                              go through its lookup functions so static+custom stay merged consistently
+                              everywhere. groupOrder / exerciseOrder (keyed by muscleGroupId) hold drag-and-drop
+                              order as plain id lists, covering built-in AND custom entries together — see the
+                              note below on why order can't just live on Exercise/MuscleGroup themselves.
 ```
 
 Workouts only store `exerciseId` (a string pointing into the static catalog), never exercise name/equipment directly — components resolve display data via `getExerciseById`.
@@ -59,13 +144,36 @@ Workouts only store `exerciseId` (a string pointing into the static catalog), ne
 
 ```
 app/layouts/default.vue           ← van-config-provider(dark) + TheHeader + <slot> + TheFooter + FAB ("+")
-                                     + global popups: WorkoutExercisePicker, WorkoutAddSetSheet, HistoryExerciseHistoryModal
-  app/components/the/TheHeader.vue   ← nav bar; van-calendar (show-confirm:false → closes on single tap),
-                                        dots on dates that have a workout
+                                     + global popups: WorkoutExercisePicker, WorkoutAddSetSheet
+  app/components/the/TheHeader.vue   ← nav bar; burger icon (left) opens TheSidebar; title is clickable
+                                        (goes home + resets to today); van-calendar (show-confirm:false →
+                                        closes on single tap), dots on dates that have a workout
+  app/components/the/TheSidebar.vue  ← left-side van-popup drawer: header row (EN/RU circular locale
+                                        buttons, left — generated from useI18n().locales, sized/shaped to
+                                        match the color swatches on purpose, for future flag-icon swap-in;
+                                        close icon, right), a menu list (currently one item, "Таймер отдыха",
+                                        opening TheRestTimerSettingsModal — see the note below), accent-color
+                                        swatches (bottom, horizontally scrollable — native scrollbar hidden
+                                        via scrollbar-width/::-webkit-scrollbar)
+  app/components/the/TheRestTimerSettingsModal.vue ← centered van-popup, mounted inside TheSidebar.vue with
+                                        a local `ref`-based show state (same reasoning as TheSidebar itself —
+                                        nothing else opens it): 3-way mode selector + conditional duration
+                                        stepper (minutes/seconds split fields, ±5s buttons), sound on/off
+                                        toggle + sound picker (van-picker in a nested van-popup, previews
+                                        audibly while scrolling), see the note below
   app/components/the/TheFooter.vue   ← 2-tab bottom nav (Workout / History), route-driven
 
-  app/pages/index.vue ("/")          ← Workout page for ui.selectedDate
-    WorkoutRestTimer                    ← rest banner, only visible while ui.restTimer.active
+  app/pages/index.vue ("/")          ← Workout page for ui.selectedDate; swipe left/right (useSwipe) moves
+                                        ui.selectedDate ±1 day, with a direction-aware Transition (slide+fade)
+                                        keyed on the date so the animation direction matches the swipe.
+                                        Exercise cards are drag-reorderable (useSortable, whole card is the
+                                        drag target, delayOnTouchOnly so a quick tap still reaches buttons/sets
+                                        underneath) — see the reactivity gotcha below before touching this.
+    WorkoutRestTimer                    ← rest banner; visibility depends on settings.restTimerMode — 'off':
+                                             never shown, 'auto': shown only while ui.restTimer.active (same as
+                                             before), 'custom': always shown (a permanent plaque with its own
+                                             play/pause/reset controls instead of the tap-anywhere-to-dismiss
+                                             behavior the other two modes use)
     WorkoutExerciseCard (per exercise)  ← sets table, PR badge, add/edit/delete set, delete exercise
     WorkoutEmptyState                   ← shown when the selected day has no exercises yet
 
@@ -73,24 +181,71 @@ app/layouts/default.vue           ← van-config-provider(dark) + TheHeader + <s
     HistoryWorkoutListItem (per workout) ← tap sets ui.selectedDate + navigates to "/"
 ```
 
+**A `van-popup` nested inside another `van-popup` needs `teleport="body"`, or it mis-centers relative to its transformed ancestor instead of the viewport.** Vant's positioned popup variants (`--left`, `--right`, `--top`, `--bottom`, and the default `--center`) all center themselves via a permanent (not just transition-time) `transform: translate3d(...)` — e.g. `.van-popup--left` is `top:50%; transform:translate3d(0,-50%,0)`. A CSS `transform` on an ancestor creates a new containing block for any descendant `position: fixed` element, so a `van-popup` rendered in the DOM *inside* another (non-teleported) `van-popup` ends up centering against that ancestor's box, not the screen — `TheRestTimerSettingsModal.vue` mounted inside `TheSidebar.vue` (which is `position="left"`) visibly opened pinned to the left edge instead of centered until `teleport="body"` was added. `ExercisePicker.vue`'s `WorkoutAddMuscleGroupModal`/`WorkoutAddExerciseModal` (nested inside a `van-action-sheet`, which wraps the same `Popup` component internally) likely have this same latent bug — just less visually obvious there since they haven't been reported broken. Any future popup/modal mounted *inside* another popup-family component should get `teleport="body"` by default, not just when a bug surfaces.
+
+**Nuxt's component auto-import prefixes a component's tag name with its subdirectory under `app/components/`, unless the filename already starts with that prefix.** `app/components/workout/AddMuscleGroupModal.vue` is used in templates as `<WorkoutAddMuscleGroupModal>`, not `<AddMuscleGroupModal>` — same reason `TheHeader.vue`/`TheSidebar.vue`/`TheFooter.vue` (whose filenames already start with "The") register under their own plain name instead of doubling up to `TheTheHeader`. This is also why every component filename in `app/components/the/` starts with "The" — it's not just a naming preference, the prefix-collapsing behavior means a same-directory file whose name *doesn't* start with the prefix ends up with a different tag name than its siblings (e.g. a hypothetical `app/components/the/RestTimerSettingsModal.vue` would need `<TheRestTimerSettingsModal>` in templates despite the file itself not saying "The" anywhere — confusing enough that it got renamed to `TheRestTimerSettingsModal.vue` specifically to keep filename and tag name matching, like every other file in that directory). Getting the tag wrong compiles with no error but fails silently at runtime (`[Vue warn]: Failed to resolve component`, renders nothing). Also: a dev server running before a new component file is added doesn't always pick it up via HMR — restart it if a newly-added component won't resolve.
+
 `app/app.vue` also syncs Vant's own component locale (`en-US`/`ru-RU`) to the active app language via a `watch(locale, ...)` — this lives in `app.vue`'s `<script setup>`, not a plugin (see i18n section for why).
 
-Global popups (`WorkoutExercisePicker`, `WorkoutAddSetSheet`, `HistoryExerciseHistoryModal`) are mounted once in the layout, not per-page, and are driven entirely by `ui` store state — components anywhere just flip `uiStore.exercisePicker.show`, `uiStore.addSetSheet = {...}`, or `uiStore.historyExerciseId` to open them.
+Global popups (`WorkoutExercisePicker`, `WorkoutAddSetSheet`) are mounted once in the layout, not per-page, and are driven entirely by `ui` store state — components anywhere just flip `uiStore.exercisePicker.show` or `uiStore.addSetSheet = {...}` to open them. `TheSidebar` is different: only `TheHeader` can open it (nothing else needs to), so its `show` state is a local `ref` in `TheHeader.vue` passed down via `v-model:show`, not `ui` store state.
+
+`ExercisePicker.vue` builds its own header instead of using `van-action-sheet`'s `:title`/`closeable` props (`:closeable="false"`, no `:title`) — needed room for a "+" icon (add group when browsing groups, add exercise when inside one) next to the close icon, which Vant's built-in header has no slot for. The two "+" targets, `WorkoutAddMuscleGroupModal`/`WorkoutAddExerciseModal`, are mounted *inside* `ExercisePicker.vue` (not layout-global like the picker itself) with local `ref`-based `show` state, same reasoning as `TheSidebar` — nothing else opens them. Both modals double as edit dialogs (`editing-group`/`editing-exercise` props — when set, prefill from that record and call `catalogStore.update*` instead of `add*` on confirm) rather than being separate add/edit components.
+
+**Custom (user-created) exercises/groups have no translation key — never call `t(\`catalog.exercises.${id}\`)` / `t(\`catalog.muscleGroups.${id}\`)` directly.** Built-in catalog names are translated; a custom one is just whatever the user typed, verbatim, regardless of active locale (there's no correct translation to fall back to). Always go through `exerciseName(exercise, t)` / `muscleGroupName(group, t)` from `app/utils/exercises.ts`, which branch on `isCustom` and return the raw `name` field for custom entries. This is also why `Exercise.name`/`MuscleGroup.name` stopped being "English dev fallback only, never rendered" for custom entries specifically — for those it's the *only* rendered name.
+
+**Deleting a custom exercise/group is a soft-delete (`isDeleted: true`), never a real array removal — built-in (non-custom) entries can't be edited or deleted at all, by design.** Workouts reference exercises by id only; hard-deleting a custom entry a user logged sets ago would silently break every past `ExerciseCard`/history render for it (`getExerciseById` would return `undefined`). `getAllMuscleGroups`/`getExercisesByMuscleGroup` (picker-facing) filter out `isDeleted` entries; `getExerciseById`/`getMuscleGroupById` (used to resolve an *existing* reference) deliberately don't, so old workouts keep resolving and rendering forever. Editing (rename/change equipment/trackingType) is a plain in-place mutation, not soft-anything — a correction is *meant* to retroactively show up in past history too. In `ExercisePicker.vue`, both are reached by swiping a custom cell (`van-swipe-cell`, `:disabled="!entry.isCustom"` so built-in cells don't swipe at all) to reveal Edit/Delete buttons.
+
+**Drag-and-drop reordering in `ExercisePicker.vue` (both the muscle-group list and the exercise-list-within-a-group) covers built-in AND custom entries together — unlike edit/delete, which is custom-only.** Reordering doesn't mutate the entries themselves, just their display position, so there's no reason to lock built-in ones out of it (a user might reasonably want "Ноги" before "Грудь", or a frequently-used exercise dragged to the top). The catch: built-in entries live in the unpersisted static `app/data/muscle-groups.ts` module, so there's nowhere on the `Exercise`/`MuscleGroup` objects themselves to durably store a custom position for them. Order is instead tracked out-of-band in `catalogStore.groupOrder` / `exerciseOrder` — plain arrays of ids, applied on top of the natural (catalog + custom) list via `app/utils/exercises.ts#applyOrder()`. Anything not yet in the stored order (new, or never reordered) is appended at the end in natural order rather than disappearing. Same drag mechanics as everywhere else (press-and-hold via `useSortable`, `watchElement: true` since both lists sit behind `v-if`/`v-else` and get destroyed/recreated on navigation, local working-copy ref with the id-set-comparison guard to avoid ping-ponging with the persist watcher) — this coexists with each cell's `van-swipe-cell` (edit/delete) without conflict, verified via Playwright.
+
+**There is no per-exercise history view.** It existed briefly (tap the exercise card's title on the Workout page) but was removed — it wasn't discoverable (the click target wasn't obvious as interactive) and it also fought with drag-reorder: long-pressing text to start a drag would trigger the browser's native text-selection instead. The `/history` tab covers this need at the day level. Don't reintroduce a click handler on `.exercise-card__name`/`ExerciseCard.vue`'s title without solving both problems again.
+
+**Vant's `showConfirmDialog` rejects its promise when the user cancels.** `removeSet`/`removeExercise` in `index.vue` both `await` it — wrap in try/catch (return on catch) or cancelling throws an unhandled rejection in the console. Any new destructive-action confirmation should follow the same try/catch shape.
+
+**Rest timer has 3 mutually exclusive modes (`settings.restTimerMode`), not independently combinable toggles.** 'off': `AddSetSheet.vue#confirm()` never calls `startRestTimer`, and the banner is gated out entirely, so it never renders regardless of `ui.restTimer` state. 'auto': the original behavior — logging a set calls `uiStore.startRestTimer(settingsStore.restTimerDuration)`, banner shows only while `ui.restTimer.active`, tapping the banner dismisses it (`stopRestTimer`). 'custom': fully manual — logging a set does *not* touch the timer at all; the banner is permanently visible instead (`RestTimer.vue`'s `showBanner` is `isCustomMode || ui.restTimer.active`, so custom mode forces it on even with `active:false`) with its own play/pause (`toggleRunning` — resumes from wherever `remaining` is via `resumeRestTimer` if paused mid-countdown, otherwise starts fresh from `restTimerDuration`) and reset (`resetRestTimer(restTimerDuration)`) controls, and tap-to-dismiss is disabled since there's nothing to dismiss.
+
+Settings live in `TheRestTimerSettingsModal.vue`, opened from a menu item in `TheSidebar.vue` (not inlined in the sidebar itself — kept the drawer short, and leaves room for future menu items). The duration stepper is shown whenever mode isn't 'off' (covers both 'auto' *and* 'custom' — deliberately not auto-only, since gating it to auto-only meant a custom-mode user had to temporarily switch to auto just to change the number, which is exactly the friction this modal exists to remove). Duration is entered as **separate minutes/seconds fields**, not a single raw-seconds input — `120` seconds is a worse UX to type/read than `2 min 0 sec`, and it matches the M:SS format the banner itself already displays. `commitDuration()` combines both fields into one total (clamped to a 5s floor) and writes it to `settingsStore.restTimerDuration`; the ±5s stepper buttons adjust that same total directly, so a `55s + 5s` press correctly carries into `1:00` rather than needing the two fields' individual carry logic handled ad hoc. Both fields' `@blur` calls the same `commitDuration()`.
+
+`app/app.vue` has two watchers on rest-timer settings, handling edges no single component's local logic could own on its own: one on `settingsStore.restTimerMode` (switching away to 'off' force-stops any timer left running from 'auto'; switching into 'custom', or loading the app already in it, seeds the banner to the configured duration rather than leaving it at whatever `ui.restTimer`'s default/stale value was), and one on `settingsStore.restTimerDuration` itself (if currently in 'custom' mode and the timer is idle — i.e. not actively counting down — editing the duration in the settings modal immediately re-seeds the banner via `resetRestTimer`, so the change is visible without needing a manual reset tap or a page reload; guarded on `!uiStore.restTimer.active` so it never yanks an in-progress countdown out from under someone mid-rest — if they want the new value applied to a running timer, they tap reset themselves, which reads the current `restTimerDuration` at that point anyway).
+
+**Rest timer plays a sound on natural completion (`settingsStore.restTimerSoundEnabled`/`restTimerSoundId`), and this is the one behavior that could NOT be wired up externally — it lives inside `ui.ts#tickRestTimer()` itself.** `stopRestTimer()` (manual dismiss/tap) and `resetRestTimer()` (manual reset button) both also set `active: false`, exactly like natural completion does — so nothing outside `tickRestTimer`'s own `else` branch (remaining hits 0, interval cleared) can distinguish "the countdown actually finished" from "the user cancelled it". `playRestTimerSound()` is therefore called from exactly that one line, nowhere else; don't try to move sound-triggering into a `watch(() => ui.restTimer.active, ...)` anywhere else in the app, it can't tell the difference. Sound files live in `public/sounds/*.mp3` (**not** `app/assets/` — that directory is Vite-processed/hashed for ESM-imported assets, wrong fit for a file selected dynamically by id and played via `new Audio(url)`; `public/` serves as-is at a stable path, same as `favicon.ico`/`robots.txt` already do). `restTimerSoundId` doubles as the mp3's basename (`shaker-bell` → `/sounds/shaker-bell.mp3`), no separate filename field needed.
+
+**Browser audio-autoplay policy requires a real user gesture before `Audio.play()` reliably works, and mobile Safari specifically ties that unlock to the exact `<audio>` element used later — not just "any gesture happened on this page".** That's why `ui.ts` keeps one lazily-created module-scope `HTMLAudioElement` (`getRestTimerAudio()`) reused by both `unlockRestTimerSound()` and the real playback, instead of a fresh `new Audio()` per call. `unlockRestTimerSound()` (muted play → pause on the same microtask the play-promise resolves → unmute) is called synchronously from `TheRestTimerSettingsModal.vue`'s mode-button `@click` and the sound-toggle `@change` — deliberately **not** from a reactive `watch` anywhere (e.g. `app.vue`'s existing mode-transition watcher), since a `{immediate:true}` watcher fires on page load too, which isn't a user gesture and would just get silently blocked. `settingsStore.restTimerMode` defaults to `'off'` (changed from `'auto'`) specifically so the first switch to `'auto'`/`'custom'` is a guaranteed real click, giving the unlock a reliable trigger point.
+
+**`TheRestTimerSettingsModal.vue`'s sound picker (`van-field`-less — a plain button, matching this file's existing pill-button convention rather than introducing Vant's cell-styled `van-field` for the first time here) opens a `van-picker` inside a bottom `van-popup`, which — being a popup nested inside this modal's own popup — needs `teleport="body"` for the same reason already documented above** (a `transform`-positioned ancestor breaks a nested popup's own centering). First new use of `van-switch`/`van-picker` in this codebase; `van-switch`'s `--van-switch-on-background` already defaults to `var(--van-primary-color)` in Vant's own theme, so it picks up this app's accent color with zero extra props. `van-picker` needs `:model-value="[settingsStore.restTimerSoundId]"` (an array, one entry per column — `Picker.mjs` seeds its internal `selectedValues` straight from this prop at setup) or the wheel always opens scrolled to the first option regardless of what's actually saved; no separate ref needed to track "current picker position", the persisted setting itself is sufficient.
+
+**The sound picker previews audibly as you scroll — this is the only preview mechanism, there's no separate preview button.** A standalone preview icon next to the sound-select trigger was tried and then deliberately removed once the picker itself could preview live — redundant UI once the picker does it. `van-picker`'s `@change` (`PickerChangeEventParams`, distinct from Vant's `@confirm`) fires once per settled index — confirmed by reading `PickerColumn.mjs`, it's gated on `value !== props.value`, so it does NOT fire continuously during a drag/momentum scroll, only when the highlighted option actually changes — landing on `TheRestTimerSettingsModal.vue`'s `onSoundChange`, which calls `uiStore.previewRestTimerSound(value)` with the scrolled-to option's id, **without** writing to `settingsStore.restTimerSoundId` (that only happens in `onSoundConfirm`). `previewRestTimerSound(soundId?: string)` still takes an optional override id (falls back to the currently *saved* sound if omitted) even though every current call site passes one explicitly — cheap to leave general in case a standalone preview trigger comes back later, shares the same underlying `playSoundFile()` as the real end-of-timer playback either way.
+
+**PR badge is per-set-id, not per-weight.** `ExerciseCard.vue`'s `isPR`/`prSetId` must flag only the *last* set that reaches the record weight, never every tied set.
+
+**Not every exercise logs weight+reps.** `Exercise.trackingType` is `'weight-reps'` (the default — barbell/dumbbell/machine/bodyweight work) or `'time-distance'` (cardio machines: treadmill, bike, stepper, stair climber, elliptical, rowing machine). `SetEntry`'s four value fields (`weight`, `reps`, `durationSeconds`, `distanceKm`) are all optional — only the pair matching the parent exercise's `trackingType` is ever populated; nothing enforces this at the type level (a plain interface, not a discriminated union — deliberate, matches how the rest of the app trusts the store as the single mutation entry point rather than leaning on type-level exhaustiveness). Bodyweight cardio moves (burpee, mountain climber, battle ropes) are `'weight-reps'` like push-ups, not `'time-distance'` — only the true distance/duration machines get the other mode. Consequences to keep in mind when touching sets:
+- `AddSetSheet.vue` branches its whole input row (and which field autofocuses) on `trackingType`; duration is entered in **minutes** in the UI but stored as `durationSeconds` (×60) for future precision.
+- `workoutStore.addSet`/`updateSet` take a `values` object, not positional args, for exactly this reason.
+- Anywhere that reads `set.weight`/`set.reps` for aggregate math (volume sums, PR, `getExerciseHistory`) must use `?? 0`, not assume they exist — a mixed day (some weight-reps exercises, some time-distance) means `undefined * undefined` would otherwise corrupt totals silently.
+- PR and the "last session" hint are intentionally **not computed for `time-distance` exercises** — `ExerciseCard.vue`'s `prWeight` and `AddSetSheet.vue`'s `prevSession` both short-circuit to `0`/`null` on that trackingType. A time-distance-appropriate PR (best pace? longest distance?) is a deliberately deferred, separate design question, not an oversight.
+
+**`SetEntry.dumbbellCount` (`1 | 2`, optional) exists to fix a real volume-undercounting bug: dumbbell exercises done with two dumbbells at once were logging `weight × reps` as if only one dumbbell was lifted.** `weight` on a dumbbell set always means the weight of **one** dumbbell (matches how people actually think about their dumbbells — "curling 10s" — and keeps `getPersonalRecord`/`ExerciseCard.vue`'s `prWeight` correct with zero changes, since a PR is about per-dumbbell load, not total system weight, regardless of whether it was lifted with one hand or two). `dumbbellCount` is the separate multiplier applied only when computing **volume** — `weight × dumbbellCount × reps` — in the 4 places that sum it: `workoutStore.getExerciseHistory`'s `totalVolume`, `index.vue`'s day-summary `totalVolume`, `WorkoutListItem.vue`'s per-workout `totalVolume`, and `ExerciseCard.vue`'s per-set `set-vol` column. All 4 use `set.dumbbellCount ?? 1` (not `?? 2`) as the fallback — a set with no stored count (any non-dumbbell exercise, or a dumbbell set logged before this field existed) is treated as a no-op ×1 multiplier rather than the store guessing "this was probably done with two." This deliberately keeps the store decoupled from the catalog (no `getExerciseById` lookup needed inside `workout.ts` just to guess a default) at the cost of old pre-launch test data staying under-counted — acceptable here since there's no real user data yet to migrate.
+
+The UI only cares about the multiplier at the moment of logging: `AddSetSheet.vue`'s `isDumbbell` computed (`exercise.equipment === 'dumbbell'`) gates a ×1/×2 toggle, defaulting to **×2** (most bilateral dumbbell movements) via `AddSetSheetState.defaultDumbbellCount`, which `index.vue`'s `openAddSet`/`openEditSet` populate from `lastSet?.dumbbellCount ?? 2` / `set.dumbbellCount ?? 2` — same "prefill from whatever was just logged for this exercise" pattern `defaultWeight`/`defaultReps` already use, so switching to ×1 mid-session (fatigue, unilateral variation, only one dumbbell available) naturally carries forward to the next set instead of resetting. Because the count lives per-`SetEntry` rather than per-exercise or per-day, a session that mixes ×1 and ×2 sets needs no special aggregation logic anywhere — every sum/max already iterates individual sets, so each one just contributes its own true value.
+
+**A computed that only reads a property (not `.length`/an iteration) on a nested reactive array won't react to `.push()`/`.splice()` on it.** `workoutStore.getWorkoutByDate(date)?.exercises` is a plain property read — Vue tracks "did `.exercises` get reassigned", not "did its contents change". `index.vue`'s `storedExercises` computed spreads it (`[...workout.exercises]`) specifically to force the iteration that makes push/splice mutations (e.g. `addExercise`) actually invalidate it. This bit only in a scenario with an intermediate `ref` feeding `useSortable` (see below) — a bare `v-for="we in exercises"` directly over a computed doesn't need this, because `v-for`'s own iteration during render establishes the same tracking implicitly.
+
+**`useSortable`'s target element gets destroyed/recreated on every date swipe** (`.workout-page__list` sits inside a `:key="currentDate"` Transition). Pass `watchElement: true` or the Sortable instance keeps pointing at a detached node after the first swipe and dragging silently stops working. Persisting the reorder goes through an explicit `workoutStore.reorderExercises()` call in a `watch`, not by letting `useSortable` own the store's array directly — same "mutations go through named store actions" rule as everywhere else in this app.
 
 ## Internationalization (i18n)
 
 English + Russian via `@nuxtjs/i18n`. This is a permanent architecture decision, not a stopgap — see `docs/00-vision.md` for the "why translations live on the frontend forever" reasoning (short version: offline-first app, no backend to serve them from, and even the future cloud-sync backend won't own UI copy).
 
-- `i18n/locales/en.json`, `i18n/locales/ru.json` — all translatable strings, namespaced by feature (`workout.*`, `addSetSheet.*`, `exercisePicker.*`, `history.*`, `exerciseHistory.*`, `restTimer.*`, `units.*`, `calendar.*`) plus `catalog.muscleGroups.<id>` / `catalog.exercises.<id>` for the exercise catalog, keyed by the same ids used in `app/data/muscle-groups.ts`.
+- `i18n/locales/en.json`, `i18n/locales/ru.json` — all translatable strings, namespaced by feature (`workout.*`, `addSetSheet.*`, `exercisePicker.*`, `history.*`, `restTimer.*`, `units.*`, `calendar.*`) plus `catalog.muscleGroups.<id>` / `catalog.exercises.<id>` for the exercise catalog, keyed by the same ids used in `app/data/muscle-groups.ts`.
 - `strategy: 'no_prefix'` in `nuxt.config.ts` — no `/ru/...` URL prefixes, locale is cookie-only (`lift-tracker-locale`). Fine given `ssr: false` and no SEO need.
-- Language switcher: `left-text` on the nav-bar in `TheHeader.vue`, toggles `setLocale()`.
+- Language switcher: EN/RU buttons in `TheSidebar.vue` (burger menu), generated from `useI18n().locales`, call `setLocale()`.
 - **Pluralization is hand-rolled, not vue-i18n's built-in plural syntax.** Russian has 3 plural forms (1 / 2-4 / 5+), not the 2 vue-i18n's default English-style plural rule assumes. Pattern: locale files have `xWordOne`/`xWordFew`/`xWordMany` string keys, `app/utils/pluralize.ts#pluralize(count, {one, few, many})` picks the right one, then interpolate into `units.countWord` (`"{count} {word}"`). See `app/pages/index.vue`'s `summaryText` for the canonical example.
 - **Don't use `tm()` for plain string arrays** — in this Nuxt/vue-i18n setup `tm()` returns compiled message AST nodes, not evaluated strings (you'd need `rt()` to render them). That's why plural forms are separate string keys resolved via plain `t()`, not a `tm()`-fetched array — simpler and avoids that footgun entirely.
-- **`useI18n()` cannot be called inside a `defineNuxtPlugin()` callback in this setup** — it threw `"Must be called at the top of a setup function"` even with `dependsOn: ['i18n:plugin']`. Any global i18n-dependent logic (like the Vant locale sync) belongs in `app/app.vue`'s `<script setup>` instead, which has a guaranteed valid Vue composition context.
+- **`useI18n()` cannot be called inside a `defineNuxtPlugin()` callback in this setup.** Global i18n-dependent logic (e.g. the Vant locale sync) belongs in `app/app.vue`'s `<script setup>` instead, which has a guaranteed valid Vue composition context.
 - Catalog display names are never read from `app/data/muscle-groups.ts#name` — always resolve via `t(\`catalog.exercises.${id}\`)` / `t(\`catalog.muscleGroups.${id}\`)`. The `name` field there is an English fallback for dev/debug convenience only.
+- **A literal `|` inside a message string is vue-i18n's plural-form separator, even via plain `t()` with no explicit plural syntax intended.** If the params include a `count` key, vue-i18n uses it to pick which side of the `|` to render — silently mangling any string where `|` was meant as a literal visual separator (e.g. an attempted `"Добавить | {count}"` key rendered as just `"Добавить"` or just the bare count depending on its value). Build that kind of "label | number" string by concatenating in the template/script instead of putting `|` in the locale JSON.
 
 ## MVP scope
 
-Per `docs/02-mvp.md`, currently implemented: start a workout, add exercises, log sets, view history, view per-exercise history — all without registration, all local-only.
+Per `docs/02-mvp.md`, currently implemented: start a workout, add exercises, create custom exercises/muscle groups, log sets, view history — all without registration, all local-only.
 
-**Explicitly out of scope right now** (don't add unless the user asks and updates the docs first): Templates / prebuilt programs, a separate "Progress" tab browsing by muscle group, custom exercise creation, achievements, AI, social features, subscriptions, registration/cloud sync.
+**Explicitly out of scope right now** (don't add unless the user asks and updates the docs first): Templates / prebuilt programs, a separate "Progress" tab browsing by muscle group, achievements, AI, social features, subscriptions, registration/cloud sync.
