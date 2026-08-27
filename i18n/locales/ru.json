@@ -101,6 +101,18 @@
   "calendar": {
     "today": "Сегодня"
   },
+  "sidebar": {
+    "colorMenuLabel": "Акцентный цвет",
+    "colors": {
+      "blue": "Синий",
+      "green": "Зелёный",
+      "orange": "Оранжевый",
+      "purple": "Фиолетовый",
+      "teal": "Бирюзовый",
+      "pink": "Розовый",
+      "amber": "Янтарный"
+    }
+  },
   "catalog": {
     "muscleGroups": {
       "chest": "Грудь",

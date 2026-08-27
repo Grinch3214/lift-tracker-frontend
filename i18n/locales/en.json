@@ -101,6 +101,18 @@
   "calendar": {
     "today": "Today"
   },
+  "sidebar": {
+    "colorMenuLabel": "Accent color",
+    "colors": {
+      "blue": "Blue",
+      "green": "Green",
+      "orange": "Orange",
+      "purple": "Purple",
+      "teal": "Teal",
+      "pink": "Pink",
+      "amber": "Amber"
+    }
+  },
   "catalog": {
     "muscleGroups": {
       "chest": "Chest",

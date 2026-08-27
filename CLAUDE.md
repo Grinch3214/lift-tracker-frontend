@@ -120,9 +120,9 @@ app/stores/settings.ts     ← persisted user preferences: primaryColor, restTim
                               (seconds, used by auto-mode's auto-start and as the reset target in custom mode),
                               restTimerSoundEnabled (bool, default true), restTimerSoundId (string, default the
                               first entry in restTimerSounds). Also exports colorPresets (plain const, not store
-                              state) — the 7 selectable accent-color options — and restTimerSounds (same pattern):
-                              a plain `{id, labelKey}[]` catalog, `id` doubles as the mp3 basename under
-                              `public/sounds/` so no separate `file` field is needed.
+                              state) — the 7 selectable accent-color options, `{value, labelKey}[]` — and
+                              restTimerSounds (same pattern): a plain `{id, labelKey}[]` catalog, `id` doubles
+                              as the mp3 basename under `public/sounds/` so no separate `file` field is needed.
 app/stores/catalog.ts      ← user-created catalog additions, persisted separately from the static seed data:
                               customMuscleGroups ('lift-tracker-custom-muscle-groups'), customExercises
                               ('lift-tracker-custom-exercises'). addMuscleGroup(name) pushes (new custom groups
@@ -149,12 +149,13 @@ app/layouts/default.vue           ← van-config-provider(dark) + TheHeader + <s
                                         (goes home + resets to today); van-calendar (show-confirm:false →
                                         closes on single tap), dots on dates that have a workout
   app/components/the/TheSidebar.vue  ← left-side van-popup drawer: header row (EN/RU circular locale
-                                        buttons, left — generated from useI18n().locales, sized/shaped to
-                                        match the color swatches on purpose, for future flag-icon swap-in;
-                                        close icon, right), a menu list (currently one item, "Таймер отдыха",
-                                        opening TheRestTimerSettingsModal — see the note below), accent-color
-                                        swatches (bottom, horizontally scrollable — native scrollbar hidden
-                                        via scrollbar-width/::-webkit-scrollbar)
+                                        buttons, left — generated from useI18n().locales; close icon, right),
+                                        a top menu list ("Таймер отдыха" → TheRestTimerSettingsModal) and a
+                                        second menu list pinned to the bottom (`margin-block-start: auto`) —
+                                        "Акцентный цвет", opening a `van-picker` (bottom `van-popup`,
+                                        `teleport="body"`) over `colorPresets`; same live-preview-on-scroll
+                                        pattern as the rest-timer sound picker (`@change` applies immediately,
+                                        `:model-value` seeds the wheel to the current color)
   app/components/the/TheRestTimerSettingsModal.vue ← centered van-popup, mounted inside TheSidebar.vue with
                                         a local `ref`-based show state (same reasoning as TheSidebar itself —
                                         nothing else opens it): 3-way mode selector + conditional duration
