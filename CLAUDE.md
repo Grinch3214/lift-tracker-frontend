@@ -62,14 +62,17 @@ app/utils/id.ts             ← generateId() — crypto.randomUUID() when availa
                               the first id-generating action. Always use this helper, never call
                               crypto.randomUUID() directly.
 
-app/data/muscle-groups.ts  ← static seed data: 10 muscle groups, 104 exercises (id, name, muscleGroupId,
+app/data/muscle-groups.ts  ← static seed data: 10 muscle groups, 115 exercises (id, name, muscleGroupId,
                               equipment, trackingType). `name` here is an English dev fallback only — never
-                              rendered directly, see i18n below. Being filled in for real muscle-group by
-                              muscle-group (chest, back, trapezius, cardio, biceps, triceps, forearm done —
-                              "arms" no longer exists as a group, split into separate "biceps"/"triceps"/
-                              "forearm" groups; "trapezius" split out of "back" the same way); shoulders/legs/
-                              core still hold the original ~6-per-group placeholder set from the initial
-                              rebuild.
+                              rendered directly, see i18n below. `equipment` is optional and occasionally
+                              omitted on purpose (e.g. `front-raise-plate` — a plate isn't one of the existing
+                              `EquipmentType` values and doesn't warrant a new one for a single exercise, so it
+                              just has no tag, same precedent as cardio's time-distance machines). Being filled
+                              in for real muscle-group by muscle-group (chest, back, trapezius, shoulders,
+                              cardio, biceps, triceps, forearm done — "arms" no longer exists as a group, split
+                              into separate "biceps"/"triceps"/"forearm" groups; "trapezius" split out of
+                              "back" the same way); legs/core still hold the original ~6-per-group placeholder
+                              set from the initial rebuild.
 app/utils/exercises.ts     ← lookups merging the static catalog with user-created entries from
                               app/stores/catalog.ts: getAllMuscleGroups, getExerciseById, getMuscleGroupById,
                               getExercisesByMuscleGroup (custom entries first, so a freshly-added one shows at
