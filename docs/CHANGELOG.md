@@ -221,3 +221,15 @@
 
 - Browser audio-autoplay policy requires a real user gesture before `Audio.play()` is reliably allowed, especially on mobile Safari, which additionally ties the unlock to the *specific* `<audio>` element used later. Handled by reusing one `HTMLAudioElement` (`app/stores/ui.ts`), "unlocked" with a muted play+immediate-pause called synchronously from the settings modal's mode-select and sound-toggle click/change handlers — not from a reactive `watch` (those can fire on page load via `{immediate:true}`, which isn't a real gesture).
 - Future idea captured in `docs/02-mvp.md` under v1.1: once the app goes PWA, extend this to real Notifications (sound / notification / both) for when the app is backgrounded — not implemented yet, just recorded.
+
+## 2026-08-27
+
+### Changed
+
+- Sidebar's accent-color swatch row replaced with a "Акцентный цвет" menu item at the bottom, opening a picker the same way the rest-timer sound picker works (scroll to preview/apply live, no separate confirm step needed).
+
+## 2026-08-28
+
+### Added
+
+- Shoulders catalog filled in for real: 16 exercises (barbell/machine/Smith/dumbbell seated press variants, Arnold press, lateral raise in 5 variants including two lever-machine ones and a cable one-arm version, front raise with dumbbell and plate, upright row, seated rear-delt raise), replacing the old 5-exercise placeholder set. Catalog is now 10 groups / 115 exercises total.

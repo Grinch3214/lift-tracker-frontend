@@ -45,21 +45,41 @@
 
     <TheRestTimerSettingsModal v-model:show="showTimerModal" />
 
-    <div class="sidebar__color-picker">
-      <button
-        v-for="color in colorPresets"
-        :key="color"
-        type="button"
-        class="sidebar__color-watch"
-        :class="{ active: color === settingsStore.primaryColor }"
-        :style="{ backgroundColor: `rgb(${color})` }"
-        @click="settingsStore.primaryColor = color"
+    <ul class="sidebar__menu-list sidebar__menu-list--bottom">
+      <li>
+        <button
+          type="button"
+          class="sidebar__menu-item"
+          @click="showColorPicker = true"
+        >
+          <van-icon name="brush-o" size="16" />
+          <span class="sidebar__menu-item-label">{{
+            t('sidebar.colorMenuLabel')
+          }}</span>
+          <van-icon name="arrow" size="14" class="sidebar__menu-item-arrow" />
+        </button>
+      </li>
+    </ul>
+
+    <van-popup
+      v-model:show="showColorPicker"
+      position="bottom"
+      round
+      teleport="body"
+    >
+      <van-picker
+        :columns="colorPickerColumns"
+        :model-value="[settingsStore.primaryColor]"
+        @change="onColorChange"
+        @confirm="showColorPicker = false"
+        @cancel="showColorPicker = false"
       />
-    </div>
+    </van-popup>
   </van-popup>
 </template>
 
 <script setup lang="ts">
+import type { PickerChangeEventParams } from 'vant';
 import { useSettingsStore, colorPresets } from '@/stores/settings';
 
 defineProps<{
@@ -74,6 +94,19 @@ const { t, locale, locales, setLocale } = useI18n();
 const settingsStore = useSettingsStore();
 
 const showTimerModal = ref(false);
+const showColorPicker = ref(false);
+
+const colorPickerColumns = computed(() =>
+  colorPresets.map((color) => ({
+    text: t(color.labelKey),
+    value: color.value,
+  })),
+);
+
+function onColorChange({ selectedOptions }: PickerChangeEventParams) {
+  const value = selectedOptions[0]?.value;
+  if (typeof value === 'string') settingsStore.primaryColor = value;
+}
 </script>
 
 <style scoped lang="scss">
@@ -126,32 +159,9 @@ const showTimerModal = ref(false);
     color: var(--van-text-color-2);
   }
 
-  &__color-picker {
-    display: flex;
-    gap: 12px;
+  &__menu-list--bottom {
     margin-block-start: auto;
-    padding: 0 2px 16px;
-    overflow-x: auto;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-
-    &::-webkit-scrollbar {
-      display: none;
-    }
-  }
-
-  &__color-watch {
-    flex-shrink: 0;
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    border: 2px solid transparent;
-    padding: 0;
-    cursor: pointer;
-
-    &.active {
-      border-color: var(--van-text-color);
-    }
+    margin-block-end: 0;
   }
 
   &__locale-btns {

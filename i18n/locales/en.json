@@ -101,6 +101,18 @@
   "calendar": {
     "today": "Today"
   },
+  "sidebar": {
+    "colorMenuLabel": "Accent color",
+    "colors": {
+      "blue": "Blue",
+      "green": "Green",
+      "orange": "Orange",
+      "purple": "Purple",
+      "teal": "Teal",
+      "pink": "Pink",
+      "amber": "Amber"
+    }
+  },
   "catalog": {
     "muscleGroups": {
       "chest": "Chest",
@@ -164,11 +176,22 @@
       "shrug-machine": "Shrug Machine",
       "shrug-smith": "Smith Machine Shrug",
       "shrug-behind-back-smith": "Behind-the-Back Smith Machine Shrug",
-      "overhead-press": "Overhead Press",
-      "dumbbell-shoulder-press": "Dumbbell Shoulder Press",
-      "lateral-raise": "Lateral Raise",
-      "front-raise": "Front Raise",
-      "face-pull": "Face Pull",
+      "overhead-press-barbell": "Overhead Press",
+      "seated-barbell-press": "Seated Barbell Press",
+      "seated-machine-press": "Seated Machine Press",
+      "seated-smith-press": "Seated Smith Machine Press",
+      "seated-dumbbell-press": "Seated Dumbbell Press",
+      "arnold-press": "Arnold Press",
+      "lateral-raise-dumbbell": "Lateral Raise",
+      "bent-over-lateral-raise": "Bent-Over Lateral Raise",
+      "lying-lateral-raise": "Lying Lateral Raise",
+      "reverse-fly-machine": "Reverse Fly Machine",
+      "lateral-raise-machine": "Lateral Raise Machine",
+      "front-raise-dumbbell": "Front Raise",
+      "front-raise-plate": "Front Raise (Plate)",
+      "upright-row-barbell": "Upright Row",
+      "seated-rear-delt-raise": "Seated Rear Delt Raise",
+      "one-arm-lateral-raise-cable": "One-Arm Lateral Raise (Cable)",
       "biceps-curl-barbell": "Barbell Curl",
       "biceps-curl-machine": "Biceps Curl Machine",
       "biceps-curl-cable-low": "Low Pulley Curl",

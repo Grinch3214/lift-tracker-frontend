@@ -62,14 +62,17 @@ app/utils/id.ts             ← generateId() — crypto.randomUUID() when availa
                               the first id-generating action. Always use this helper, never call
                               crypto.randomUUID() directly.
 
-app/data/muscle-groups.ts  ← static seed data: 10 muscle groups, 104 exercises (id, name, muscleGroupId,
+app/data/muscle-groups.ts  ← static seed data: 10 muscle groups, 115 exercises (id, name, muscleGroupId,
                               equipment, trackingType). `name` here is an English dev fallback only — never
-                              rendered directly, see i18n below. Being filled in for real muscle-group by
-                              muscle-group (chest, back, trapezius, cardio, biceps, triceps, forearm done —
-                              "arms" no longer exists as a group, split into separate "biceps"/"triceps"/
-                              "forearm" groups; "trapezius" split out of "back" the same way); shoulders/legs/
-                              core still hold the original ~6-per-group placeholder set from the initial
-                              rebuild.
+                              rendered directly, see i18n below. `equipment` is optional and occasionally
+                              omitted on purpose (e.g. `front-raise-plate` — a plate isn't one of the existing
+                              `EquipmentType` values and doesn't warrant a new one for a single exercise, so it
+                              just has no tag, same precedent as cardio's time-distance machines). Being filled
+                              in for real muscle-group by muscle-group (chest, back, trapezius, shoulders,
+                              cardio, biceps, triceps, forearm done — "arms" no longer exists as a group, split
+                              into separate "biceps"/"triceps"/"forearm" groups; "trapezius" split out of
+                              "back" the same way); legs/core still hold the original ~6-per-group placeholder
+                              set from the initial rebuild.
 app/utils/exercises.ts     ← lookups merging the static catalog with user-created entries from
                               app/stores/catalog.ts: getAllMuscleGroups, getExerciseById, getMuscleGroupById,
                               getExercisesByMuscleGroup (custom entries first, so a freshly-added one shows at
@@ -120,9 +123,9 @@ app/stores/settings.ts     ← persisted user preferences: primaryColor, restTim
                               (seconds, used by auto-mode's auto-start and as the reset target in custom mode),
                               restTimerSoundEnabled (bool, default true), restTimerSoundId (string, default the
                               first entry in restTimerSounds). Also exports colorPresets (plain const, not store
-                              state) — the 7 selectable accent-color options — and restTimerSounds (same pattern):
-                              a plain `{id, labelKey}[]` catalog, `id` doubles as the mp3 basename under
-                              `public/sounds/` so no separate `file` field is needed.
+                              state) — the 7 selectable accent-color options, `{value, labelKey}[]` — and
+                              restTimerSounds (same pattern): a plain `{id, labelKey}[]` catalog, `id` doubles
+                              as the mp3 basename under `public/sounds/` so no separate `file` field is needed.
 app/stores/catalog.ts      ← user-created catalog additions, persisted separately from the static seed data:
                               customMuscleGroups ('lift-tracker-custom-muscle-groups'), customExercises
                               ('lift-tracker-custom-exercises'). addMuscleGroup(name) pushes (new custom groups
@@ -149,12 +152,13 @@ app/layouts/default.vue           ← van-config-provider(dark) + TheHeader + <s
                                         (goes home + resets to today); van-calendar (show-confirm:false →
                                         closes on single tap), dots on dates that have a workout
   app/components/the/TheSidebar.vue  ← left-side van-popup drawer: header row (EN/RU circular locale
-                                        buttons, left — generated from useI18n().locales, sized/shaped to
-                                        match the color swatches on purpose, for future flag-icon swap-in;
-                                        close icon, right), a menu list (currently one item, "Таймер отдыха",
-                                        opening TheRestTimerSettingsModal — see the note below), accent-color
-                                        swatches (bottom, horizontally scrollable — native scrollbar hidden
-                                        via scrollbar-width/::-webkit-scrollbar)
+                                        buttons, left — generated from useI18n().locales; close icon, right),
+                                        a top menu list ("Таймер отдыха" → TheRestTimerSettingsModal) and a
+                                        second menu list pinned to the bottom (`margin-block-start: auto`) —
+                                        "Акцентный цвет", opening a `van-picker` (bottom `van-popup`,
+                                        `teleport="body"`) over `colorPresets`; same live-preview-on-scroll
+                                        pattern as the rest-timer sound picker (`@change` applies immediately,
+                                        `:model-value` seeds the wheel to the current color)
   app/components/the/TheRestTimerSettingsModal.vue ← centered van-popup, mounted inside TheSidebar.vue with
                                         a local `ref`-based show state (same reasoning as TheSidebar itself —
                                         nothing else opens it): 3-way mode selector + conditional duration
