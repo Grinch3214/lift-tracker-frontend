@@ -23,15 +23,21 @@ export const useWorkoutStore = defineStore('workout', () => {
   function getOrCreateWorkoutByDate(date: string): Workout {
     let workout = getWorkoutByDate(date);
     if (!workout) {
+      const now = new Date().toISOString();
       workout = {
         id: generateId(),
         date,
         exercises: [],
-        createdAt: new Date().toISOString(),
+        createdAt: now,
+        updatedAt: now,
       };
       workouts.value.push(workout);
     }
     return workout;
+  }
+
+  function touch(workout: Workout): void {
+    workout.updatedAt = new Date().toISOString();
   }
 
   function addExercise(date: string, exerciseId: string): WorkoutExercise {
@@ -44,6 +50,7 @@ export const useWorkoutStore = defineStore('workout', () => {
       order: workout.exercises.length,
     };
     workout.exercises.push(workoutExercise);
+    touch(workout);
     return workoutExercise;
   }
 
@@ -59,7 +66,10 @@ export const useWorkoutStore = defineStore('workout', () => {
     if (workout.exercises.length === 0) {
       const workoutIndex = workouts.value.findIndex((w) => w.id === workout.id);
       if (workoutIndex !== -1) workouts.value.splice(workoutIndex, 1);
+      return;
     }
+
+    touch(workout);
   }
 
   function reorderExercises(date: string, orderedIds: string[]): void {
@@ -77,6 +87,7 @@ export const useWorkoutStore = defineStore('workout', () => {
     workout.exercises.forEach((exercise, index) => {
       exercise.order = index;
     });
+    touch(workout);
   }
 
   type SetValues = Pick<
@@ -90,7 +101,8 @@ export const useWorkoutStore = defineStore('workout', () => {
     values: SetValues,
   ): void {
     const workout = getWorkoutByDate(date);
-    const exercise = workout?.exercises.find((e) => e.id === workoutExerciseId);
+    if (!workout) return;
+    const exercise = workout.exercises.find((e) => e.id === workoutExerciseId);
     if (!exercise) return;
 
     exercise.sets.push({
@@ -98,6 +110,7 @@ export const useWorkoutStore = defineStore('workout', () => {
       ...values,
       isCompleted: true,
     });
+    touch(workout);
   }
 
   function updateSet(
@@ -107,11 +120,13 @@ export const useWorkoutStore = defineStore('workout', () => {
     values: SetValues,
   ): void {
     const workout = getWorkoutByDate(date);
-    const exercise = workout?.exercises.find((e) => e.id === workoutExerciseId);
+    if (!workout) return;
+    const exercise = workout.exercises.find((e) => e.id === workoutExerciseId);
     const set = exercise?.sets.find((s) => s.id === setId);
     if (!set) return;
 
     Object.assign(set, values);
+    touch(workout);
   }
 
   function removeSet(
@@ -120,11 +135,15 @@ export const useWorkoutStore = defineStore('workout', () => {
     setId: string,
   ): void {
     const workout = getWorkoutByDate(date);
-    const exercise = workout?.exercises.find((e) => e.id === workoutExerciseId);
+    if (!workout) return;
+    const exercise = workout.exercises.find((e) => e.id === workoutExerciseId);
     if (!exercise) return;
 
     const index = exercise.sets.findIndex((s) => s.id === setId);
-    if (index !== -1) exercise.sets.splice(index, 1);
+    if (index !== -1) {
+      exercise.sets.splice(index, 1);
+      touch(workout);
+    }
   }
 
   const workoutDates = computed(() => workouts.value.map((w) => w.date));
