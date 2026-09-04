@@ -1,7 +1,7 @@
 <template>
   <div class="limit-gate">
     <van-button
-      v-if="!guestStore.isGuestLimitReached"
+      v-if="!guestStore.isGuestLimitReached || authStore.isAuthenticated"
       type="primary"
       icon="plus"
       size="small"
@@ -33,10 +33,12 @@
 <script setup lang="ts">
 import { useUiStore } from '@/stores/ui';
 import { useGuestStore } from '@/stores/guest';
+import { useAuthStore } from '@/stores/auth';
 
 const { t } = useI18n();
 const uiStore = useUiStore();
 const guestStore = useGuestStore();
+const authStore = useAuthStore();
 
 const showAuthModal = ref(false);
 </script>

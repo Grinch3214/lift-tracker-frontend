@@ -115,6 +115,8 @@
   },
   "sidebar": {
     "colorMenuLabel": "Акцентный цвет",
+    "loginMenuLabel": "Войти",
+    "logout": "Выйти",
     "colors": {
       "blue": "Синий",
       "green": "Зелёный",

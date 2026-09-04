@@ -2,6 +2,7 @@
   <van-popup
     :show="show"
     round
+    teleport="body"
     class="auth-modal"
     @update:show="$emit('update:show', $event)"
   >
@@ -48,15 +49,24 @@
 </template>
 
 <script setup lang="ts">
-const props = defineProps<{
-  show: boolean;
-}>();
+import { useAuthStore } from '@/stores/auth';
+
+const props = withDefaults(
+  defineProps<{
+    show: boolean;
+    initialMode?: 'register' | 'login';
+  }>(),
+  {
+    initialMode: 'register',
+  },
+);
 
 const emit = defineEmits<{
   'update:show': [value: boolean];
 }>();
 
 const { t } = useI18n();
+const authStore = useAuthStore();
 
 const mode = ref<'register' | 'login'>('register');
 const email = ref('');
@@ -66,7 +76,7 @@ watch(
   () => props.show,
   (shown) => {
     if (shown) {
-      mode.value = 'register';
+      mode.value = props.initialMode;
       email.value = '';
       password.value = '';
     }
@@ -78,8 +88,13 @@ function toggleMode() {
 }
 
 function submit() {
-  // TODO(cloud-sync, v1.3): wire to POST /auth/register / POST /auth/login once the
-  // HTTP client + auth store exist — see lift-tracker-backend/API.md. UI-only for now.
+  const trimmedEmail = email.value.trim();
+  if (!trimmedEmail || !password.value) return;
+  // TODO(cloud-sync, v1.3): call POST /auth/register / POST /auth/login (see
+  // lift-tracker-backend/API.md) once the HTTP client exists, and store the real
+  // access/refresh tokens instead of just the email. Stubbed for now so the logged-in
+  // UI (sidebar account row, guest gate) can be built and tested ahead of that.
+  authStore.userEmail = trimmedEmail;
   emit('update:show', false);
 }
 </script>

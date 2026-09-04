@@ -239,4 +239,5 @@
 ### Added
 
 - `updatedAt` on custom `MuscleGroup`/`Exercise` entries (stamped on every add/update/delete) and a companion `catalogOrderUpdatedAt` for `groupOrder`/`exerciseOrder` together — groundwork for cloud-sync LWW, matching the backend's wire contracts. First step of v1.3; `Workout.updatedAt` landed earlier (2026-09-02).
-- Guest workout counter (`app/stores/guest.ts`, `guestWorkoutCount`/`isGuestLimitReached`) — counts a day as a workout on its first logged set, not on the `Workout` record existing. Not wired to any UI gate yet; that's the next step.
+- Guest workout counter (`app/stores/guest.ts`, `guestWorkoutCount`/`isGuestLimitReached`) — counts a day as a workout on its first logged set, not on the `Workout` record existing.
+- Guest limit UI gate: `GuestLimitGate.vue` swaps the "+" FAB for a banner once the limit is reached, opening `GuestAuthModal.vue` (email/password, register↔login toggle link). Also added a permanent "Войти"/account row to `TheSidebar.vue` (bottom menu) so registration is discoverable well before the 10th workout, not just at the hard block — shows a login menu item when logged out, or truncated email + logout when in. New `app/stores/auth.ts` (`userEmail`/`isAuthenticated`/`logout()`) backs both; `AuthModal.vue#submit()` is still a stub (sets `userEmail` directly, no real request) until the HTTP client lands.

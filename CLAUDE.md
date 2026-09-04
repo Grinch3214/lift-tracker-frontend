@@ -147,18 +147,26 @@ app/stores/catalog.ts      ← user-created catalog additions, persisted separat
                               level up — see its ARCHITECTURE.md/API.md), same reasoning as Workout.updatedAt
                               above.
 app/stores/guest.ts        ← guestWorkoutCount ('lift-tracker-guest-workout-count'), the free-tier counter
-                              for the not-yet-built registration gate (docs/02-mvp.md, v1.3). Monotonic — only
-                              incrementWorkoutCount() (++) exists, no decrement, so deleting/recreating a
-                              workout can't be used to dodge the limit. Deliberately NOT counted by raw
-                              Workout/localStorage record count (a day gets a Workout row just by being opened,
-                              via getOrCreateWorkoutByDate, even with zero sets logged) — counted by "first
-                              SetEntry logged for that day" instead, checked in AddSetSheet.vue#confirm() (sums
-                              sets across every exercise in that date's Workout *before* calling
-                              workoutStore.addSet(), and only increments if that sum was 0) rather than inside
-                              workoutStore itself, to keep the guest/registration domain out of the workout
-                              store. isGuestLimitReached (computed, `guestWorkoutCount >= GUEST_WORKOUT_LIMIT`,
-                              10) is exported specifically so future gated features can branch on one boolean
-                              instead of re-deriving the comparison.
+                              backing the registration gate (docs/02-mvp.md, v1.3; UI: GuestLimitGate.vue
+                              below). Monotonic — only incrementWorkoutCount() (++) exists, no decrement, so
+                              deleting/recreating a workout can't be used to dodge the limit. Deliberately NOT
+                              counted by raw Workout/localStorage record count (a day gets a Workout row just
+                              by being opened, via getOrCreateWorkoutByDate, even with zero sets logged) —
+                              counted by "first SetEntry logged for that day" instead, checked in
+                              AddSetSheet.vue#confirm() (sums sets across every exercise in that date's
+                              Workout *before* calling workoutStore.addSet(), and only increments if that sum
+                              was 0) rather than inside workoutStore itself, to keep the guest/registration
+                              domain out of the workout store. isGuestLimitReached (computed,
+                              `guestWorkoutCount >= GUEST_WORKOUT_LIMIT`, 10) is exported specifically so
+                              gated features branch on one boolean instead of re-deriving the comparison.
+app/stores/auth.ts         ← userEmail ('lift-tracker-user-email', string | null), isAuthenticated (computed,
+                              `userEmail !== null`), logout() (clears it). Deliberately minimal — no
+                              accessToken/refreshToken yet, that's the not-yet-built HTTP-client layer (see
+                              lift-tracker-backend/API.md). userEmail is set directly by GuestAuthModal's
+                              submit() stub (no real request happens) so the rest of the UI (TheSidebar's
+                              account row, GuestLimitGate) can be built and exercised end-to-end ahead of the
+                              real network wiring — when that lands, logout() also needs to revoke the refresh
+                              token via `POST /auth/logout`, not just clear local state.
 ```
 
 Workouts only store `exerciseId` (a string pointing into the static catalog), never exercise name/equipment directly — components resolve display data via `getExerciseById`.
@@ -166,7 +174,7 @@ Workouts only store `exerciseId` (a string pointing into the static catalog), ne
 ## Pages / component tree
 
 ```
-app/layouts/default.vue           ← van-config-provider(dark) + TheHeader + <slot> + TheFooter + FAB ("+")
+app/layouts/default.vue           ← van-config-provider(dark) + TheHeader + <slot> + TheFooter + GuestLimitGate
                                      + global popups: WorkoutExercisePicker, WorkoutAddSetSheet
   app/components/the/TheHeader.vue   ← nav bar; burger icon (left) opens TheSidebar; title is clickable
                                         (goes home + resets to today); van-calendar (show-confirm:false →
@@ -175,10 +183,15 @@ app/layouts/default.vue           ← van-config-provider(dark) + TheHeader + <s
                                         buttons, left — generated from useI18n().locales; close icon, right),
                                         a top menu list ("Таймер отдыха" → TheRestTimerSettingsModal) and a
                                         second menu list pinned to the bottom (`margin-block-start: auto`) —
-                                        "Акцентный цвет", opening a `van-picker` (bottom `van-popup`,
-                                        `teleport="body"`) over `colorPresets`; same live-preview-on-scroll
-                                        pattern as the rest-timer sound picker (`@change` applies immediately,
-                                        `:model-value` seeds the wheel to the current color)
+                                        "Акцентный цвет" (opening a `van-picker` in a bottom `van-popup`,
+                                        `teleport="body"`, over `colorPresets`; same live-preview-on-scroll
+                                        pattern as the rest-timer sound picker — `@change` applies immediately,
+                                        `:model-value` seeds the wheel to the current color), then an
+                                        auth-aware last item: `!authStore.isAuthenticated` → "Войти" menu item
+                                        opening `GuestAuthModal` in login mode; authenticated → a static row
+                                        instead (truncated email start-aligned via `text-overflow: ellipsis`
+                                        + `min-width: 0` on a `flex:1` span, "Выйти" button end-aligned calling
+                                        `authStore.logout()`) — not a menu item, doesn't navigate anywhere
   app/components/the/TheRestTimerSettingsModal.vue ← centered van-popup, mounted inside TheSidebar.vue with
                                         a local `ref`-based show state (same reasoning as TheSidebar itself —
                                         nothing else opens it): 3-way mode selector + conditional duration
@@ -186,6 +199,19 @@ app/layouts/default.vue           ← van-config-provider(dark) + TheHeader + <s
                                         toggle + sound picker (van-picker in a nested van-popup, previews
                                         audibly while scrolling), see the note below
   app/components/the/TheFooter.vue   ← 2-tab bottom nav (Workout / History), route-driven
+  app/components/guest/LimitGate.vue ← replaces the old always-visible FAB: shows the "+" FAB (opens
+                                        WorkoutExercisePicker, same as before) while
+                                        `!guestStore.isGuestLimitReached || authStore.isAuthenticated`;
+                                        otherwise shows a wide banner in the FAB's place instead (own local
+                                        `ref`-based show state for GuestAuthModal, same "only one opener"
+                                        reasoning as TheSidebar — tapping the banner opens it in register mode)
+  app/components/guest/AuthModal.vue ← centered van-popup, `teleport="body"` (mounted both directly in
+                                        LimitGate.vue and nested inside TheSidebar.vue's own van-popup — the
+                                        latter is exactly the nested-popup case documented below). Plain
+                                        email+password fields, `initialMode` prop (`'register'` default,
+                                        `'login'` from TheSidebar) seeds which side opens; a link at the
+                                        bottom toggles register/login locally without closing. `submit()` is
+                                        a stub — see the note below on cloud sync.
 
   app/pages/index.vue ("/")          ← Workout page for ui.selectedDate; swipe left/right (useSwipe) moves
                                         ui.selectedDate ±1 day, with a direction-aware Transition (slide+fade)

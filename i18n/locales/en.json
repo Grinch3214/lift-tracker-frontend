@@ -115,6 +115,8 @@
   },
   "sidebar": {
     "colorMenuLabel": "Accent color",
+    "loginMenuLabel": "Log in",
+    "logout": "Log out",
     "colors": {
       "blue": "Blue",
       "green": "Green",
