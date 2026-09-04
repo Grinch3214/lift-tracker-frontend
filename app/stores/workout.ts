@@ -146,6 +146,22 @@ export const useWorkoutStore = defineStore('workout', () => {
     }
   }
 
+  // Upsert by id, LWW-guarded by updatedAt — used by syncApi.ts to apply both a push's
+  // `rejected[].current` (server's authoritative version) and a pull's incoming workouts.
+  // Not exposed to components; sync is the only caller, same as guest/auth domains staying
+  // out of this store's own mutation surface.
+  function replaceWorkout(incoming: Workout): void {
+    const index = workouts.value.findIndex((w) => w.id === incoming.id);
+    const existing = index === -1 ? undefined : workouts.value[index];
+    if (!existing) {
+      workouts.value.push(incoming);
+      return;
+    }
+    if (incoming.updatedAt >= existing.updatedAt) {
+      workouts.value.splice(index, 1, incoming);
+    }
+  }
+
   const workoutDates = computed(() => workouts.value.map((w) => w.date));
 
   function getExerciseHistory(exerciseId: string): ExerciseHistoryEntry[] {
@@ -211,6 +227,7 @@ export const useWorkoutStore = defineStore('workout', () => {
     addSet,
     updateSet,
     removeSet,
+    replaceWorkout,
     workoutDates,
     getExerciseHistory,
     getPersonalRecord,

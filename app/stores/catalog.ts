@@ -116,6 +116,47 @@ export const useCatalogStore = defineStore('catalog', () => {
     catalogOrderUpdatedAt.value = new Date().toISOString();
   }
 
+  // Upsert by id, LWW-guarded by updatedAt — same reasoning and same sync-only caller as
+  // workoutStore.replaceWorkout(). Missing updatedAt (pre-dates the field) sorts as always
+  // older, so a synced version always wins over a never-touched local one.
+  function replaceMuscleGroup(incoming: MuscleGroup): void {
+    const index = customMuscleGroups.value.findIndex((g) => g.id === incoming.id);
+    const existing = index === -1 ? undefined : customMuscleGroups.value[index];
+    if (!existing) {
+      customMuscleGroups.value.push(incoming);
+      return;
+    }
+    if ((incoming.updatedAt ?? '') >= (existing.updatedAt ?? '')) {
+      customMuscleGroups.value.splice(index, 1, incoming);
+    }
+  }
+
+  function replaceExercise(incoming: Exercise): void {
+    const index = customExercises.value.findIndex((e) => e.id === incoming.id);
+    const existing = index === -1 ? undefined : customExercises.value[index];
+    if (!existing) {
+      customExercises.value.push(incoming);
+      return;
+    }
+    if ((incoming.updatedAt ?? '') >= (existing.updatedAt ?? '')) {
+      customExercises.value.splice(index, 1, incoming);
+    }
+  }
+
+  // Unconditional set, no LWW guard — unlike the two above, groupOrder/exerciseOrder are
+  // called with the server's version only after it's already established as authoritative
+  // (either a push rejection's `current`, or a pull result), so there's nothing left to
+  // compare against locally by the time this runs.
+  function setCatalogOrder(order: {
+    groupOrder: string[];
+    exerciseOrder: Record<string, string[]>;
+    updatedAt: string;
+  }): void {
+    groupOrder.value = order.groupOrder;
+    exerciseOrder.value = order.exerciseOrder;
+    catalogOrderUpdatedAt.value = order.updatedAt;
+  }
+
   return {
     customMuscleGroups,
     customExercises,
@@ -130,5 +171,8 @@ export const useCatalogStore = defineStore('catalog', () => {
     deleteExercise,
     reorderMuscleGroups,
     reorderExercises,
+    replaceMuscleGroup,
+    replaceExercise,
+    setCatalogOrder,
   };
 });

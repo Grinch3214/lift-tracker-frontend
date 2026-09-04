@@ -23,7 +23,7 @@ No test suite yet — there is no automated correctness gate. Verify changes by 
 
 **Stack:** Nuxt 4 + TypeScript + Pinia (`@pinia/nuxt`) + Vant 4 (`@vant/nuxt`) + VueUse (`@vueuse/nuxt`) + `@nuxtjs/i18n` + SCSS. Drag-and-drop reordering uses `@vueuse/integrations`'s `useSortable` (wraps `sortablejs`) — neither Vant nor `@vueuse/core` has a list-reorder primitive.
 
-**Local-first, backend optional.** All persistence is still `localStorage` via VueUse's `useStorage`, wrapped inside Pinia stores — the app works fully offline, with no account, exactly as before. As of v1.3 (in progress) there's now also a sibling repo, `lift-tracker-backend` (one level up, `POST /auth/register`/`login`/`refresh`/`logout` implemented and wired up; `/sync/*` exists backend-side per its `API.md` but has no frontend caller yet). `app/utils/api.ts`/`authApi.ts` talk to it via `runtimeConfig.public.apiBaseUrl` (`.env.example`) — see `app/stores/auth.ts` below. A registered/logged-in session doesn't change how local storage works today; it will become an offline cache once `/sync/*` is wired up (see `docs/02-mvp.md` v1.3, `docs/04-decisions.md`).
+**Local-first, backend optional.** All persistence is still `localStorage` via VueUse's `useStorage`, wrapped inside Pinia stores — the app works fully offline, with no account, exactly as before. As of v1.3 (in progress) there's now also a sibling repo, `lift-tracker-backend` (one level up): auth (`/auth/*`) and sync (`/sync/*`) are both implemented and wired up from the frontend — see `app/stores/auth.ts`/`sync.ts` and `app/utils/api.ts`/`authApi.ts`/`syncApi.ts` below. `runtimeConfig.public.apiBaseUrl` (`.env.example`) points at it. Sync currently only runs once, right after a successful register/login (`authApi.ts#authenticate()` → `syncApi.ts#runFullSync()`) — no background/periodic trigger yet, that's a deliberately deferred next step. Local storage's role doesn't change even once synced — it's not replaced by the backend, mutations still write there first and instantly; the backend is a copy kept in sync, not a new source of truth the UI waits on (see `docs/02-mvp.md` v1.3, `docs/04-decisions.md`).
 
 **`ssr: false` in `nuxt.config.ts` is load-bearing, don't remove without fixing the underlying issue first.** With SSR on, the server renders with an empty store (no `localStorage` on the server), and Pinia/Nuxt hydration overwrites the client's already-hydrated `useStorage` state with that empty server snapshot on every page load — `useStorage`'s watcher then persists the emptiness back into `localStorage`, silently wiping saved workouts on refresh. Since this app has no server-rendered content to gain from SSR anyway, keeping it off is the correct fix, not a workaround.
 
@@ -97,7 +97,8 @@ app/stores/workout.ts      ← THE store. workouts: Workout[] persisted via useS
                               for that exerciseId, not just the first match — matters now that duplicates
                               exist; treats missing weight/reps as 0 rather than assuming every set has them)
                               and getPersonalRecord(exerciseId) — used for the PR badge and the "last session"
-                              hint in the add-set popup.
+                              hint in the add-set popup. replaceWorkout(workout) — upsert-by-id, LWW-guarded by
+                              updatedAt; syncApi.ts's only mutation entry point into this store, see below.
 app/stores/ui.ts           ← UI-only state, not persisted: selectedDate (drives which day is shown on Workout page),
                               addSetSheet (add/edit-set popup state — the name is historical, it's rendered
                               as a centered popup now, not a bottom sheet), exercisePicker (show flag),
@@ -153,10 +154,14 @@ app/stores/catalog.ts      ← user-created catalog additions, persisted separat
                               Every add/update/delete on a custom group or exercise also stamps `updatedAt`
                               (ISO timestamp) on that entry — built-in entries never get one. catalogOrderUpdatedAt
                               ('lift-tracker-catalog-order-updated-at') is a companion timestamp shared by both
-                              reorderMuscleGroups/reorderExercises. Both exist to satisfy the not-yet-built
-                              cloud-sync backend's LWW contract (`lift-tracker-backend`, a sibling repo one
-                              level up — see its ARCHITECTURE.md/API.md), same reasoning as Workout.updatedAt
-                              above.
+                              reorderMuscleGroups/reorderExercises. Both exist to satisfy the cloud-sync
+                              backend's LWW contract (`lift-tracker-backend`, a sibling repo one level up — see
+                              its ARCHITECTURE.md/API.md), same reasoning as Workout.updatedAt above.
+                              replaceMuscleGroup(group)/replaceExercise(exercise) — upsert-by-id, LWW-guarded by
+                              updatedAt; setCatalogOrder({groupOrder, exerciseOrder, updatedAt}) — unconditional
+                              set, no LWW guard needed (only ever called with an already-authoritative server
+                              version). All three exist solely for syncApi.ts, see below — not meant for any
+                              other caller.
 app/stores/guest.ts        ← guestWorkoutCount ('lift-tracker-guest-workout-count'), the free-tier counter
                               backing the registration gate (docs/02-mvp.md, v1.3; UI: GuestLimitGate.vue
                               below). Monotonic — only incrementWorkoutCount() (++) exists, no decrement, so
@@ -182,33 +187,118 @@ app/stores/guest.ts        ← guestWorkoutCount ('lift-tracker-guest-workout-co
                               allowance the moment they log back out, defeating the whole limit. AddSetSheet.vue
                               also stopped calling incrementWorkoutCount() at all while authStore.isAuthenticated
                               — once exhaustLimit() has run, the raw count no longer needs to track anything.
-app/stores/auth.ts         ← userEmail ('lift-tracker-user-email') and refreshToken
-                              ('lift-tracker-refresh-token') persisted via useStorage; accessToken is a plain
-                              (non-persisted) `ref` — deliberately excluded from localStorage since it's a
-                              live 15-minute session handle, unlike everything else this app stores there;
-                              cleared on every reload, re-derived by authApi.ts#restoreSession() (called once
-                              from app.vue's onMounted) via POST /auth/refresh using the persisted
-                              refreshToken. isAuthenticated (computed, `userEmail !== null`) — note this can
-                              be true with accessToken still null right after a reload, until restoreSession()
-                              resolves; nothing in the app currently makes an authenticated request eagerly on
-                              load, so this window is harmless today but matters once `/sync/*` calls exist.
+app/stores/auth.ts         ← userEmail ('lift-tracker-user-email'), userId ('lift-tracker-user-id') and
+                              refreshToken ('lift-tracker-refresh-token') persisted via useStorage; accessToken
+                              is a plain (non-persisted) `ref` — deliberately excluded from localStorage since
+                              it's a live 15-minute session handle, unlike everything else this app stores
+                              there; cleared on every reload. isAuthenticated (computed, `userEmail !== null`)
+                              stays true across a reload even while accessToken is still null — nothing eagerly
+                              restores it on mount, see api.ts below for why that's fine. userId exists
+                              specifically to recognize a rejected `catalogOrder` entry in a sync push response
+                              — its wire `id` is the user's own id (one row per user server-side), not a
+                              client-minted UUID like every other synced entity, see syncApi.ts below.
                               setSession()/clearSession() are the only mutations — pure state, no HTTP calls
                               (same "keep the domain out of unrelated concerns" reasoning as guest.ts below);
                               the actual `/auth/*` requests live in app/utils/authApi.ts instead
-                              (registerUser/loginUser/logoutUser/restoreSession), which is also where
-                              GuestAuthModal's submit() and TheSidebar's logout button call into — a plain
-                              utils module rather than store actions, to avoid a circular import (authApi.ts
-                              needs to call into the store; the store must not need to call back into
-                              authApi.ts). app/utils/api.ts (`apiFetch`/`ApiError`) is the thin $fetch wrapper
-                              underneath — reads `runtimeConfig.public.apiBaseUrl` (see .env.example),
-                              re-throws ofetch's FetchError as `ApiError{status, message}` parsed from Nest's
-                              `{statusCode, message, error}` body shape. No Authorization-header injection or
-                              401-refresh-retry interceptor yet — nothing calls a Bearer-protected endpoint
-                              yet (register/login/refresh/logout all authenticate via body fields, not a
-                              header); add that to apiFetch when the first `/sync/*` call needs it, not before.
+                              (registerUser/loginUser/logoutUser), which is also where GuestAuthModal's
+                              submit() and TheSidebar's logout button call into — a plain utils module rather
+                              than store actions, to avoid a circular import (authApi.ts needs to call into the
+                              store; the store must not need to call back into authApi.ts). registerUser()/
+                              loginUser() both also call guestStore.exhaustLimit() (see guest.ts above) and
+                              then syncApi.ts#runFullSync() — wrapped in try/catch, a failed first sync doesn't
+                              block the already-successful login/register, it just leaves local data unsynced
+                              until the next successful sync (no retry loop yet, that's the deferred
+                              "background trigger" question — already answered, see app.vue below, but a failed
+                              sync specifically still isn't retried on its own).
+app/utils/api.ts           ← apiFetch/ApiError, the thin $fetch wrapper every other util above builds on —
+                              reads `runtimeConfig.public.apiBaseUrl` (see .env.example), re-throws ofetch's
+                              FetchError as `ApiError{status, message}` parsed from Nest's `{statusCode,
+                              message, error}` body shape. `apiFetch(path, {auth: true})` attaches
+                              `Authorization: Bearer <accessToken>` and, on a 401, calls
+                              refreshAccessToken() and retries the request exactly once before giving up —
+                              opt-in per call since /auth/register|login|refresh|logout authenticate via body
+                              fields, not a header, and don't need any of this; only `/sync/*` passes
+                              `auth: true` today. Also refreshes proactively, before ever attempting the
+                              request, when `accessToken` is null but a `refreshToken` exists — accessToken is
+                              memory-only (auth.ts), so it's always null right after a reload; without this,
+                              the first authenticated call after any reload would deterministically 401 once
+                              before the reactive retry saved it. This proactive check is also the *only*
+                              place session restoration happens — there's deliberately no separate eager
+                              "restore session on mount" call (an earlier authApi.ts#restoreSession(), called
+                              from app.vue's onMounted, was removed once this made it redundant: it was firing
+                              an extra, independently-timed refresh on every reload alongside whatever the sync
+                              triggers below were already doing). refreshAccessToken() is single-flight (a
+                              module-scope `refreshInFlight` promise, concurrent callers share it instead of
+                              each firing their own POST /auth/refresh) — the backend rotates the refresh token
+                              on every use, so two genuinely concurrent callers racing with the same starting
+                              token would otherwise have one succeed and one 401 on an already-rotated token,
+                              wrongly clearSession()-ing a still-valid session. Real risk, not just
+                              theoretical, once app.vue's several independent sync triggers below can all call
+                              into this around app boot.
+app/stores/sync.ts         ← lastSyncedAt ('lift-tracker-last-synced-at', persisted string, '' = never
+                              synced) — sent as `?since=` on the next pull and, informationally, as
+                              `lastSyncedAt` in the push body (the backend accepts but ignores it, see
+                              API.md — LWW is decided per-record by that record's own updatedAt). syncing/
+                              lastSyncError are transient (`ref`, not persisted) — no UI reads them yet, they
+                              exist because syncApi.ts needs somewhere to record them.
+app/utils/syncApi.ts       ← the client half of the flow in lift-tracker-backend/ARCHITECTURE.md section 5:
+                              push local changes → apply whatever came back `rejected` (server's version
+                              always wins, that's the whole point of LWW) → pull with the new `since` → save
+                              `serverTime` as the next lastSyncedAt. runFullSync() is the only export other
+                              modules call — authApi.ts (right after a successful register/login) and app.vue
+                              (the background triggers, see below) — pushLocalData()/pullRemoteData()/
+                              applyRejected() are internal. runFullSync() is single-flight (same
+                              `xInFlight`-promise pattern as api.ts's refreshAccessToken()) — with several
+                              independent triggers, two can legitimately fire close together (e.g. login
+                              succeeding right as visibility changes), and without this each would kick off its
+                              own overlapping push+pull cycle; a trigger arriving mid-sync now just awaits the
+                              run already in progress instead. Not a correctness issue either way (LWW guards
+                              on both ends make a redundant concurrent sync harmless, just wasteful). Deliberately no per-domain sync toggle or partial
+                              sync — always all 4 domains (workouts, customMuscleGroups, customExercises,
+                              catalogOrder) together, skipping a domain in the push body only when there's
+                              nothing local to send. pushLocalData() filters every domain to `updatedAt >
+                              lastSyncedAt` (isNewerThan()) before building the body — sending the entire local
+                              dataset on every push doesn't scale (megabytes once workout history is a year or
+                              two deep, and the backend's default body-size limit is smaller than that); an
+                              empty `lastSyncedAt` (first-ever sync) is the one case this can't help with,
+                              since there's nothing yet to diff against — that push is always full-size, capped
+                              in practice by GUEST_WORKOUT_LIMIT (10 workouts) since registration is what
+                              triggers the first sync. Workout/WorkoutExercise/SetEntry are sent as-is with
+                              zero mapping — the frontend types
+                              already match PushWorkoutDto/WireWorkout field-for-field, which is exactly why
+                              Workout.updatedAt was added in the first place. MuscleGroup/Exercise need a thin
+                              two-way mapper (toWireMuscleGroup/toWireExercise dropping `isCustom` — the
+                              backend only ever deals in custom entries, defaulting missing isDeleted/
+                              updatedAt; fromWireMuscleGroup/fromWireExercise adding `isCustom: true` back).
+                              applyRejected() resolves a flat, mixed-domain id (see API.md's "accepted/
+                              rejected — общий пул id из всех доменов разом") back to the right local
+                              collection by checking authStore.userId first (→ catalogOrder), then searching
+                              each collection for a matching id — there's no cheaper way to tell them apart,
+                              the wire response doesn't tag which domain a rejected id belongs to.
+                              workoutStore.replaceWorkout()/catalogStore.replaceMuscleGroup()/replaceExercise()
+                              (upsert by id, LWW-guarded by updatedAt) apply both a push's `rejected[].current`
+                              and a pull's incoming records through the same code path — sync is their only
+                              caller, not exposed to components, same as every other store's "components
+                              mutate only through named actions" rule. catalogStore.setCatalogOrder() has no
+                              LWW guard, unlike those two — by the time it's called the server's version is
+                              already established as authoritative (either a rejection's `current` or a pull
+                              result), nothing local left to compare against.
+                              pullRemoteData() also guards against a specific data-loss trap: if lastSyncedAt
+                              is set (we've synced before) but every local domain is empty (workouts,
+                              customMuscleGroups, customExercises), that's treated as localStorage having been
+                              lost independent of any real sync event — not a legitimate empty state — and
+                              forces a full pull (ignoring `since`) instead of an incremental one. Without this,
+                              an incremental pull would trust the emptiness and never re-fetch anything with an
+                              `updatedAt` older than lastSyncedAt, permanently orphaning data that's still safe
+                              on the server — it *looks* like the server got wiped (push never sends
+                              destructive "replace everything" semantics, so it can't actually do that), but
+                              what really happened is pull silently deciding there's nothing new to ask for.
+                              Workouts have no deletion sync at all yet (see the note below), so "genuinely 0
+                              workouts after having synced before" can't happen through normal use — this
+                              heuristic has no real false-positive cost.
 ```
 
-Workouts only store `exerciseId` (a string pointing into the static catalog), never exercise name/equipment directly — components resolve display data via `getExerciseById`.
+Workouts only store `exerciseId` (a string pointing into the static catalog), never exercise name/equipment directly — components resolve display data via `getExerciseById`. `app/pages/index.vue#getExercise()` falls back to a minimal stand-in Exercise (`isCustom: true`, `name` = the raw id) instead of crashing when an exerciseId doesn't resolve to any known catalog entry — can legitimately happen with data that arrived via sync (another device's custom exercise not yet pulled here, or any other data-integrity edge case), and previously took the whole page down with an uncaught exception (a bare `getExerciseById(id)!` non-null assertion) instead of just that one card degrading.
 
 ## Pages / component tree
 
@@ -294,6 +384,13 @@ app/layouts/default.vue           ← van-config-provider(dark) + TheHeader + <s
 **Nuxt's component auto-import prefixes a component's tag name with its subdirectory under `app/components/`, unless the filename already starts with that prefix.** `app/components/workout/AddMuscleGroupModal.vue` is used in templates as `<WorkoutAddMuscleGroupModal>`, not `<AddMuscleGroupModal>` — same reason `TheHeader.vue`/`TheSidebar.vue`/`TheFooter.vue` (whose filenames already start with "The") register under their own plain name instead of doubling up to `TheTheHeader`. This is also why every component filename in `app/components/the/` starts with "The" — it's not just a naming preference, the prefix-collapsing behavior means a same-directory file whose name *doesn't* start with the prefix ends up with a different tag name than its siblings (e.g. a hypothetical `app/components/the/RestTimerSettingsModal.vue` would need `<TheRestTimerSettingsModal>` in templates despite the file itself not saying "The" anywhere — confusing enough that it got renamed to `TheRestTimerSettingsModal.vue` specifically to keep filename and tag name matching, like every other file in that directory). Getting the tag wrong compiles with no error but fails silently at runtime (`[Vue warn]: Failed to resolve component`, renders nothing). Also: a dev server running before a new component file is added doesn't always pick it up via HMR — restart it if a newly-added component won't resolve.
 
 `app/app.vue` also syncs Vant's own component locale (`en-US`/`ru-RU`) to the active app language via a `watch(locale, ...)` — this lives in `app.vue`'s `<script setup>`, not a plugin (see i18n section for why).
+
+**Cloud-sync background triggers also live in `app.vue`** (v1.3 item 5) — `syncApi.ts#runFullSync()` otherwise only ever fires once, right after register/login. None of them are wired to individual store mutations (`workoutStore.addSet()` etc. stay pure, no network awareness) — sync granularity is the whole `Workout` (a backend decision, see syncApi.ts above), so a trigger on every logged set would re-send the same growing workout over and over within one session. Instead, three independent triggers, all gated on `authStore.isAuthenticated`:
+- **`visibilitychange`** (via VueUse's `useDocumentVisibility()`) is the primary one — fires on both leaving (tucking the phone away between sets, the common mobile case) and returning (catch up on another device's changes). `{ immediate: true }` also covers app boot while a session already exists, which nothing else does eagerly.
+- **Reconnect** (`useOnline()` flipping back to `true`) — catches up on whatever queued locally while offline.
+- **A 7-minute backstop timer** (`SYNC_BACKSTOP_INTERVAL_MS`), armed only while the tab is actually foregrounded, online, and authenticated. Exists specifically for sessions that never background the tab at all — e.g. someone watching `WorkoutRestTimer`'s countdown instead of switching apps between sets, or anyone on desktop — where `visibilitychange` would otherwise never fire for the whole session. Not the primary path, just bounds worst-case staleness.
+
+Calling `runFullSync()` speculatively on every one of these is cheap even when nothing changed — `pushLocalData()`'s own `updatedAt`-vs-`lastSyncedAt` filter (see syncApi.ts above) means an idle tick costs at most one lightweight `GET /sync/pull`, no `POST /sync/push` at all. It's also safe for two of these to fire close together (e.g. login succeeding right as the tab's visibility changes) — `runFullSync()` is single-flight, same reasoning as api.ts's `refreshAccessToken()`.
 
 Global popups (`WorkoutExercisePicker`, `WorkoutAddSetSheet`, `GuestAuthModal`) are mounted once in the layout, not per-page, and are driven entirely by `ui` store state — components anywhere just flip `uiStore.exercisePicker.show` or `uiStore.addSetSheet = {...}` to open them. `GuestAuthModal` followed this same path once it grew a second opener — it started out props/emit-driven with a single local `ref` in `LimitGate.vue` (the same pattern `TheSidebar` still uses below), and got promoted to `uiStore.authModal` once `TheSidebar` and `GuestRemainingNudge` also needed to open it; the rule of thumb is "one opener → local `ref`, 2+ openers → `ui` store". `TheSidebar` itself is still the single-opener case: only `TheHeader` can open it (nothing else needs to), so its `show` state is a local `ref` in `TheHeader.vue` passed down via `v-model:show`, not `ui` store state.
 
