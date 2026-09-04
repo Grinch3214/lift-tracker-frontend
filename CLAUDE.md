@@ -17,13 +17,13 @@ npm run generate  # static generation
 npm run preview   # preview a production build
 ```
 
-No test suite yet — there is no automated correctness gate. Verify changes by running the app.
+No automated test suite yet — no correctness gate in CI. `playwright` is installed as a devDependency (browser is `chromium`) for ad-hoc manual verification (drive the dev server headlessly, screenshot, inspect network requests) — used throughout the v1.3 sync work, not wired into any test runner yet. Verify changes by running the app.
 
 ## Architecture
 
 **Stack:** Nuxt 4 + TypeScript + Pinia (`@pinia/nuxt`) + Vant 4 (`@vant/nuxt`) + VueUse (`@vueuse/nuxt`) + `@nuxtjs/i18n` + SCSS. Drag-and-drop reordering uses `@vueuse/integrations`'s `useSortable` (wraps `sortablejs`) — neither Vant nor `@vueuse/core` has a list-reorder primitive.
 
-**Local-first, backend optional.** All persistence is still `localStorage` via VueUse's `useStorage`, wrapped inside Pinia stores — the app works fully offline, with no account, exactly as before. As of v1.3 (in progress) there's now also a sibling repo, `lift-tracker-backend` (one level up): auth (`/auth/*`) and sync (`/sync/*`) are both implemented and wired up from the frontend — see `app/stores/auth.ts`/`sync.ts` and `app/utils/api.ts`/`authApi.ts`/`syncApi.ts` below. `runtimeConfig.public.apiBaseUrl` (`.env.example`) points at it. Sync currently only runs once, right after a successful register/login (`authApi.ts#authenticate()` → `syncApi.ts#runFullSync()`) — no background/periodic trigger yet, that's a deliberately deferred next step. Local storage's role doesn't change even once synced — it's not replaced by the backend, mutations still write there first and instantly; the backend is a copy kept in sync, not a new source of truth the UI waits on (see `docs/02-mvp.md` v1.3, `docs/04-decisions.md`).
+**Local-first, backend optional.** All persistence is still `localStorage` via VueUse's `useStorage`, wrapped inside Pinia stores — the app works fully offline, with no account, exactly as before. As of v1.3 there's now also a sibling repo, `lift-tracker-backend` (one level up): auth (`/auth/*`) and sync (`/sync/*`) are both implemented and wired up from the frontend — see `app/stores/auth.ts`/`sync.ts` and `app/utils/api.ts`/`authApi.ts`/`syncApi.ts` below. `runtimeConfig.public.apiBaseUrl` (`.env.example`) points at it. Sync fires right after register/login and again on `app.vue`'s background triggers (visibility change, reconnect, a backstop timer — see app.vue below); nothing wires it to individual store mutations. Local storage's role doesn't change even once synced — it's not replaced by the backend, mutations still write there first and instantly; the backend is a copy kept in sync, not a new source of truth the UI waits on (see `docs/02-mvp.md` v1.3, `docs/04-decisions.md`).
 
 **`ssr: false` in `nuxt.config.ts` is load-bearing, don't remove without fixing the underlying issue first.** With SSR on, the server renders with an empty store (no `localStorage` on the server), and Pinia/Nuxt hydration overwrites the client's already-hydrated `useStorage` state with that empty server snapshot on every page load — `useStorage`'s watcher then persists the emptiness back into `localStorage`, silently wiping saved workouts on refresh. Since this app has no server-rendered content to gain from SSR anyway, keeping it off is the correct fix, not a workaround.
 
@@ -207,9 +207,8 @@ app/stores/auth.ts         ← userEmail ('lift-tracker-user-email'), userId ('l
                               loginUser() both also call guestStore.exhaustLimit() (see guest.ts above) and
                               then syncApi.ts#runFullSync() — wrapped in try/catch, a failed first sync doesn't
                               block the already-successful login/register, it just leaves local data unsynced
-                              until the next successful sync (no retry loop yet, that's the deferred
-                              "background trigger" question — already answered, see app.vue below, but a failed
-                              sync specifically still isn't retried on its own).
+                              until the next background trigger fires (app.vue below) — nothing retries a
+                              failed sync on its own.
 app/utils/api.ts           ← apiFetch/ApiError, the thin $fetch wrapper every other util above builds on —
                               reads `runtimeConfig.public.apiBaseUrl` (see .env.example), re-throws ofetch's
                               FetchError as `ApiError{status, message}` parsed from Nest's `{statusCode,
@@ -385,12 +384,12 @@ app/layouts/default.vue           ← van-config-provider(dark) + TheHeader + <s
 
 `app/app.vue` also syncs Vant's own component locale (`en-US`/`ru-RU`) to the active app language via a `watch(locale, ...)` — this lives in `app.vue`'s `<script setup>`, not a plugin (see i18n section for why).
 
-**Cloud-sync background triggers also live in `app.vue`** (v1.3 item 5) — `syncApi.ts#runFullSync()` otherwise only ever fires once, right after register/login. None of them are wired to individual store mutations (`workoutStore.addSet()` etc. stay pure, no network awareness) — sync granularity is the whole `Workout` (a backend decision, see syncApi.ts above), so a trigger on every logged set would re-send the same growing workout over and over within one session. Instead, three independent triggers, all gated on `authStore.isAuthenticated`:
+**Cloud-sync background triggers also live in `app.vue`** (v1.3 item 5) — `syncApi.ts#runFullSync()`'s only other caller is `authApi.ts#authenticate()`, once per register/login. None of these triggers are wired to individual store mutations (`workoutStore.addSet()` etc. stay pure, no network awareness) — sync granularity is the whole `Workout` (a backend decision, see syncApi.ts above), so a trigger on every logged set would re-send the same growing workout over and over within one session. Instead, three independent triggers, all gated on `authStore.isAuthenticated`:
 - **`visibilitychange`** (via VueUse's `useDocumentVisibility()`) is the primary one — fires on both leaving (tucking the phone away between sets, the common mobile case) and returning (catch up on another device's changes). `{ immediate: true }` also covers app boot while a session already exists, which nothing else does eagerly.
 - **Reconnect** (`useOnline()` flipping back to `true`) — catches up on whatever queued locally while offline.
 - **A 7-minute backstop timer** (`SYNC_BACKSTOP_INTERVAL_MS`), armed only while the tab is actually foregrounded, online, and authenticated. Exists specifically for sessions that never background the tab at all — e.g. someone watching `WorkoutRestTimer`'s countdown instead of switching apps between sets, or anyone on desktop — where `visibilitychange` would otherwise never fire for the whole session. Not the primary path, just bounds worst-case staleness.
 
-Calling `runFullSync()` speculatively on every one of these is cheap even when nothing changed — `pushLocalData()`'s own `updatedAt`-vs-`lastSyncedAt` filter (see syncApi.ts above) means an idle tick costs at most one lightweight `GET /sync/pull`, no `POST /sync/push` at all. It's also safe for two of these to fire close together (e.g. login succeeding right as the tab's visibility changes) — `runFullSync()` is single-flight, same reasoning as api.ts's `refreshAccessToken()`.
+Calling `runFullSync()` speculatively on every one of these is cheap even when nothing changed — `pushLocalData()`'s own `updatedAt`-vs-`lastSyncedAt` filter (see syncApi.ts above) means an idle tick costs at most one lightweight `GET /sync/pull`, no `POST /sync/push` at all. Two of these firing close together (e.g. login succeeding right as visibility changes) is also safe — see runFullSync()'s single-flight note in syncApi.ts above.
 
 Global popups (`WorkoutExercisePicker`, `WorkoutAddSetSheet`, `GuestAuthModal`) are mounted once in the layout, not per-page, and are driven entirely by `ui` store state — components anywhere just flip `uiStore.exercisePicker.show` or `uiStore.addSetSheet = {...}` to open them. `GuestAuthModal` followed this same path once it grew a second opener — it started out props/emit-driven with a single local `ref` in `LimitGate.vue` (the same pattern `TheSidebar` still uses below), and got promoted to `uiStore.authModal` once `TheSidebar` and `GuestRemainingNudge` also needed to open it; the rule of thumb is "one opener → local `ref`, 2+ openers → `ui` store". `TheSidebar` itself is still the single-opener case: only `TheHeader` can open it (nothing else needs to), so its `show` state is a local `ref` in `TheHeader.vue` passed down via `v-model:show`, not `ui` store state.
 
@@ -451,6 +450,6 @@ English + Russian via `@nuxtjs/i18n`. This is a permanent architecture decision,
 
 ## MVP scope
 
-Per `docs/02-mvp.md`, currently implemented: start a workout, add exercises, create custom exercises/muscle groups, log sets, view history — all without registration, all local-only.
+Per `docs/02-mvp.md`: the original MVP (start a workout, add exercises, create custom exercises/muscle groups, log sets, view history — all still fully usable without registration, local-only) plus v1.3 (registration, guest limit, Cloud Sync — see `app/stores/auth.ts`/`sync.ts`/`guest.ts` above) are both implemented.
 
-**Explicitly out of scope right now** (don't add unless the user asks and updates the docs first): Templates / prebuilt programs, a separate "Progress" tab browsing by muscle group, achievements, AI, social features, subscriptions, registration/cloud sync.
+**Explicitly out of scope right now** (don't add unless the user asks and updates the docs first): Templates / prebuilt programs, a separate "Progress" tab browsing by muscle group, achievements, AI, social features, subscriptions, Push Notifications (v1.3's other half — backend exists, this specific feature hasn't been started), Measurements (v1.5).
