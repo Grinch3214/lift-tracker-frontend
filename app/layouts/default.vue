@@ -7,9 +7,11 @@
     <TheFooter />
 
     <GuestLimitGate />
+    <GuestRemainingNudge />
 
     <WorkoutExercisePicker />
     <WorkoutAddSetSheet />
+    <GuestAuthModal />
   </van-config-provider>
 </template>
 

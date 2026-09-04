@@ -1,10 +1,10 @@
 <template>
   <van-popup
-    :show="show"
+    :show="uiStore.authModal.show"
     round
     teleport="body"
     class="auth-modal"
-    @update:show="$emit('update:show', $event)"
+    @update:show="uiStore.authModal.show = $event"
   >
     <div class="auth-modal__header">
       <span class="auth-modal__title">{{
@@ -49,23 +49,11 @@
 </template>
 
 <script setup lang="ts">
+import { useUiStore } from '@/stores/ui';
 import { useAuthStore } from '@/stores/auth';
 
-const props = withDefaults(
-  defineProps<{
-    show: boolean;
-    initialMode?: 'register' | 'login';
-  }>(),
-  {
-    initialMode: 'register',
-  },
-);
-
-const emit = defineEmits<{
-  'update:show': [value: boolean];
-}>();
-
 const { t } = useI18n();
+const uiStore = useUiStore();
 const authStore = useAuthStore();
 
 const mode = ref<'register' | 'login'>('register');
@@ -73,10 +61,10 @@ const email = ref('');
 const password = ref('');
 
 watch(
-  () => props.show,
+  () => uiStore.authModal.show,
   (shown) => {
     if (shown) {
-      mode.value = props.initialMode;
+      mode.value = uiStore.authModal.initialMode;
       email.value = '';
       password.value = '';
     }
@@ -95,7 +83,7 @@ function submit() {
   // access/refresh tokens instead of just the email. Stubbed for now so the logged-in
   // UI (sidebar account row, guest gate) can be built and tested ahead of that.
   authStore.userEmail = trimmedEmail;
-  emit('update:show', false);
+  uiStore.authModal.show = false;
 }
 </script>
 

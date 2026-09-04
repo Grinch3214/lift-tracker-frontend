@@ -21,14 +21,43 @@ export const useUiStore = defineStore('ui', () => {
 
   const exercisePicker = ref({ show: false });
 
+  const authModal = ref<{
+    show: boolean;
+    initialMode: 'register' | 'login';
+  }>({
+    show: false,
+    initialMode: 'register',
+  });
+
   const restTimer = ref({
     active: false,
     remaining: 90,
     total: 90,
   });
 
+  // Transient "you have N free workouts left" toast — see AddSetSheet.vue#confirm(),
+  // the only place that shows it, at fixed remaining-count milestones.
+  const guestNudge = ref<{ show: boolean; remaining: number }>({
+    show: false,
+    remaining: 0,
+  });
+
   let timerInterval: ReturnType<typeof setInterval> | null = null;
   let restTimerAudio: HTMLAudioElement | null = null;
+  let guestNudgeTimeout: ReturnType<typeof setTimeout> | null = null;
+
+  function showGuestNudge(remaining: number) {
+    if (guestNudgeTimeout) clearTimeout(guestNudgeTimeout);
+    guestNudge.value = { show: true, remaining };
+    guestNudgeTimeout = setTimeout(() => {
+      guestNudge.value.show = false;
+    }, 4500);
+  }
+
+  function hideGuestNudge() {
+    if (guestNudgeTimeout) clearTimeout(guestNudgeTimeout);
+    guestNudge.value.show = false;
+  }
 
   function getRestTimerAudio(): HTMLAudioElement {
     if (!restTimerAudio) restTimerAudio = new Audio();
@@ -108,7 +137,11 @@ export const useUiStore = defineStore('ui', () => {
     selectedDate,
     addSetSheet,
     exercisePicker,
+    authModal,
     restTimer,
+    guestNudge,
+    showGuestNudge,
+    hideGuestNudge,
     startRestTimer,
     resumeRestTimer,
     resetRestTimer,

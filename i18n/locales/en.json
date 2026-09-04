@@ -87,6 +87,9 @@
     "setWordOne": "set",
     "setWordFew": "sets",
     "setWordMany": "sets",
+    "workoutWordOne": "workout",
+    "workoutWordFew": "workouts",
+    "workoutWordMany": "workouts",
     "equipment": {
       "barbell": "Barbell",
       "dumbbell": "Dumbbell",
@@ -104,6 +107,7 @@
   "guest": {
     "limitBanner": "Free workout limit reached",
     "limitBannerHint": "Register to keep your progress",
+    "nudgeTitle": "{workouts} left as a guest",
     "registerTitle": "Register",
     "loginTitle": "Log in",
     "emailLabel": "Email",

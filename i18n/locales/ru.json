@@ -87,6 +87,9 @@
     "setWordOne": "подход",
     "setWordFew": "подхода",
     "setWordMany": "подходов",
+    "workoutWordOne": "тренировка",
+    "workoutWordFew": "тренировки",
+    "workoutWordMany": "тренировок",
     "equipment": {
       "barbell": "Штанга",
       "dumbbell": "Гантели",
@@ -104,6 +107,7 @@
   "guest": {
     "limitBanner": "Лимит бесплатных тренировок исчерпан",
     "limitBannerHint": "Зарегистрируйся, чтобы сохранить прогресс",
+    "nudgeTitle": "Осталось {workouts} без регистрации",
     "registerTitle": "Регистрация",
     "loginTitle": "Вход",
     "emailLabel": "Email",

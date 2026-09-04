@@ -12,7 +12,7 @@
       v-else
       type="button"
       class="limit-gate__banner"
-      @click="showAuthModal = true"
+      @click="openAuthModal"
     >
       <van-icon name="warning-o" size="18" class="limit-gate__banner-icon" />
       <span class="limit-gate__banner-text">
@@ -25,8 +25,6 @@
       </span>
       <van-icon name="arrow" size="14" />
     </button>
-
-    <GuestAuthModal v-model:show="showAuthModal" />
   </div>
 </template>
 
@@ -40,7 +38,9 @@ const uiStore = useUiStore();
 const guestStore = useGuestStore();
 const authStore = useAuthStore();
 
-const showAuthModal = ref(false);
+function openAuthModal() {
+  uiStore.authModal = { show: true, initialMode: 'register' };
+}
 </script>
 
 <style scoped lang="scss">

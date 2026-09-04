@@ -63,7 +63,7 @@
         <button
           type="button"
           class="sidebar__menu-item"
-          @click="openAuthModal('login')"
+          @click="uiStore.authModal = { show: true, initialMode: 'login' }"
         >
           <van-icon name="user-o" size="16" />
           <span class="sidebar__menu-item-label">{{
@@ -99,14 +99,13 @@
         @cancel="showColorPicker = false"
       />
     </van-popup>
-
-    <GuestAuthModal v-model:show="showAuthModal" :initial-mode="authModalMode" />
   </van-popup>
 </template>
 
 <script setup lang="ts">
 import type { PickerChangeEventParams } from 'vant';
 import { useSettingsStore, colorPresets } from '@/stores/settings';
+import { useUiStore } from '@/stores/ui';
 import { useAuthStore } from '@/stores/auth';
 
 defineProps<{
@@ -119,17 +118,11 @@ defineEmits<{
 
 const { t, locale, locales, setLocale } = useI18n();
 const settingsStore = useSettingsStore();
+const uiStore = useUiStore();
 const authStore = useAuthStore();
 
 const showTimerModal = ref(false);
 const showColorPicker = ref(false);
-const showAuthModal = ref(false);
-const authModalMode = ref<'register' | 'login'>('login');
-
-function openAuthModal(mode: 'register' | 'login') {
-  authModalMode.value = mode;
-  showAuthModal.value = true;
-}
 
 const colorPickerColumns = computed(() =>
   colorPresets.map((color) => ({

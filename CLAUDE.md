@@ -101,6 +101,17 @@ app/stores/workout.ts      ← THE store. workouts: Workout[] persisted via useS
 app/stores/ui.ts           ← UI-only state, not persisted: selectedDate (drives which day is shown on Workout page),
                               addSetSheet (add/edit-set popup state — the name is historical, it's rendered
                               as a centered popup now, not a bottom sheet), exercisePicker (show flag),
+                              authModal ({show, initialMode: 'register'|'login'} — GuestAuthModal.vue is a
+                              global popup like WorkoutExercisePicker/WorkoutAddSetSheet, not a locally-`ref`'d
+                              one like TheSidebar itself, because it now has 3 independent openers:
+                              GuestLimitGate's banner, TheSidebar's login menu item, GuestRemainingNudge's
+                              toast — components anywhere just set `uiStore.authModal = {show: true,
+                              initialMode: '...'}`), guestNudge ({show, remaining} — the "N free workouts
+                              left" toast state; `showGuestNudge(remaining)`/`hideGuestNudge()` own a
+                              module-scope `setTimeout` handle (`guestNudgeTimeout`, same "runtime handle, not
+                              a ref" category as `timerInterval` below) that auto-hides it after 4.5s — only
+                              caller is AddSetSheet.vue#confirm(), at the milestones in
+                              `GUEST_NUDGE_MILESTONES`, see guest.ts above),
                               restTimer ({active, remaining, total}, countdown driven by a module-scope
                               setInterval shared across the store singleton's lifetime — not persisted, resets
                               on page reload). startRestTimer(seconds)/stopRestTimer() (unconditional start/stop),
@@ -159,6 +170,10 @@ app/stores/guest.ts        ← guestWorkoutCount ('lift-tracker-guest-workout-co
                               domain out of the workout store. isGuestLimitReached (computed,
                               `guestWorkoutCount >= GUEST_WORKOUT_LIMIT`, 10) is exported specifically so
                               gated features branch on one boolean instead of re-deriving the comparison.
+                              GUEST_NUDGE_MILESTONES ([8,6,4,2], plain const, not store state) — the remaining
+                              values at which AddSetSheet.vue triggers ui.ts's guestNudge toast (see below);
+                              deliberately not every single workout, and not the sidebar-driven "isAuthenticated"
+                              case at all — nudging someone already logged in makes no sense.
 app/stores/auth.ts         ← userEmail ('lift-tracker-user-email', string | null), isAuthenticated (computed,
                               `userEmail !== null`), logout() (clears it). Deliberately minimal — no
                               accessToken/refreshToken yet, that's the not-yet-built HTTP-client layer (see
@@ -175,7 +190,8 @@ Workouts only store `exerciseId` (a string pointing into the static catalog), ne
 
 ```
 app/layouts/default.vue           ← van-config-provider(dark) + TheHeader + <slot> + TheFooter + GuestLimitGate
-                                     + global popups: WorkoutExercisePicker, WorkoutAddSetSheet
+                                     + GuestRemainingNudge + global popups: WorkoutExercisePicker,
+                                     WorkoutAddSetSheet, GuestAuthModal
   app/components/the/TheHeader.vue   ← nav bar; burger icon (left) opens TheSidebar; title is clickable
                                         (goes home + resets to today); van-calendar (show-confirm:false →
                                         closes on single tap), dots on dates that have a workout
@@ -202,16 +218,30 @@ app/layouts/default.vue           ← van-config-provider(dark) + TheHeader + <s
   app/components/guest/LimitGate.vue ← replaces the old always-visible FAB: shows the "+" FAB (opens
                                         WorkoutExercisePicker, same as before) while
                                         `!guestStore.isGuestLimitReached || authStore.isAuthenticated`;
-                                        otherwise shows a wide banner in the FAB's place instead (own local
-                                        `ref`-based show state for GuestAuthModal, same "only one opener"
-                                        reasoning as TheSidebar — tapping the banner opens it in register mode)
-  app/components/guest/AuthModal.vue ← centered van-popup, `teleport="body"` (mounted both directly in
-                                        LimitGate.vue and nested inside TheSidebar.vue's own van-popup — the
-                                        latter is exactly the nested-popup case documented below). Plain
-                                        email+password fields, `initialMode` prop (`'register'` default,
-                                        `'login'` from TheSidebar) seeds which side opens; a link at the
-                                        bottom toggles register/login locally without closing. `submit()` is
-                                        a stub — see the note below on cloud sync.
+                                        otherwise shows a wide banner in the FAB's place instead — tapping it
+                                        sets `uiStore.authModal = {show: true, initialMode: 'register'}`
+  app/components/guest/RemainingNudge.vue ← the "N free workouts left" toast, mounted globally in the layout
+                                        like GuestAuthModal (not conditionally like LimitGate — it's `v-if`'d
+                                        on `uiStore.guestNudge.show` internally instead so the auto-hide
+                                        Transition has something to animate out). Fixed top overlay (not
+                                        RestTimer.vue's inline-in-flow banner) — chosen so it can appear on
+                                        any page without pushing content, and so it never visually competes
+                                        with LimitGate's own bottom-fixed FAB/banner (they're mutually
+                                        exclusive in practice anyway: the nudge only fires below the limit,
+                                        LimitGate only swaps to the banner at the limit). Tapping it calls
+                                        `uiStore.hideGuestNudge()` then opens GuestAuthModal in register mode,
+                                        same as LimitGate's banner.
+  app/components/guest/AuthModal.vue ← centered van-popup, `teleport="body"` (mounted once, globally, in the
+                                        layout — driven by `uiStore.authModal`, see ui.ts above; needs
+                                        `teleport="body"` regardless because TheSidebar's login menu item sets
+                                        the same `uiStore.authModal` from *inside* TheSidebar's own van-popup,
+                                        so at that trigger point AuthModal is effectively nested — the
+                                        nested-popup case documented below). Plain email+password fields, mode
+                                        (register/login) seeded from `uiStore.authModal.initialMode` on open
+                                        (`'register'` from LimitGate/RemainingNudge, `'login'` from
+                                        TheSidebar); a link at the bottom toggles register/login locally
+                                        without closing. `submit()` is a stub — see the note below on cloud
+                                        sync.
 
   app/pages/index.vue ("/")          ← Workout page for ui.selectedDate; swipe left/right (useSwipe) moves
                                         ui.selectedDate ±1 day, with a direction-aware Transition (slide+fade)
@@ -237,7 +267,7 @@ app/layouts/default.vue           ← van-config-provider(dark) + TheHeader + <s
 
 `app/app.vue` also syncs Vant's own component locale (`en-US`/`ru-RU`) to the active app language via a `watch(locale, ...)` — this lives in `app.vue`'s `<script setup>`, not a plugin (see i18n section for why).
 
-Global popups (`WorkoutExercisePicker`, `WorkoutAddSetSheet`) are mounted once in the layout, not per-page, and are driven entirely by `ui` store state — components anywhere just flip `uiStore.exercisePicker.show` or `uiStore.addSetSheet = {...}` to open them. `TheSidebar` is different: only `TheHeader` can open it (nothing else needs to), so its `show` state is a local `ref` in `TheHeader.vue` passed down via `v-model:show`, not `ui` store state.
+Global popups (`WorkoutExercisePicker`, `WorkoutAddSetSheet`, `GuestAuthModal`) are mounted once in the layout, not per-page, and are driven entirely by `ui` store state — components anywhere just flip `uiStore.exercisePicker.show` or `uiStore.addSetSheet = {...}` to open them. `GuestAuthModal` followed this same path once it grew a second opener — it started out props/emit-driven with a single local `ref` in `LimitGate.vue` (the same pattern `TheSidebar` still uses below), and got promoted to `uiStore.authModal` once `TheSidebar` and `GuestRemainingNudge` also needed to open it; the rule of thumb is "one opener → local `ref`, 2+ openers → `ui` store". `TheSidebar` itself is still the single-opener case: only `TheHeader` can open it (nothing else needs to), so its `show` state is a local `ref` in `TheHeader.vue` passed down via `v-model:show`, not `ui` store state.
 
 `ExercisePicker.vue` builds its own header instead of using `van-action-sheet`'s `:title`/`closeable` props (`:closeable="false"`, no `:title`) — needed room for a "+" icon (add group when browsing groups, add exercise when inside one) next to the close icon, which Vant's built-in header has no slot for. The two "+" targets, `WorkoutAddMuscleGroupModal`/`WorkoutAddExerciseModal`, are mounted *inside* `ExercisePicker.vue` (not layout-global like the picker itself) with local `ref`-based `show` state, same reasoning as `TheSidebar` — nothing else opens them. Both modals double as edit dialogs (`editing-group`/`editing-exercise` props — when set, prefill from that record and call `catalogStore.update*` instead of `add*` on confirm) rather than being separate add/edit components.
 
