@@ -77,7 +77,7 @@
         <button
           type="button"
           class="sidebar__account-logout"
-          @click="authStore.logout()"
+          @click="logoutUser()"
         >
           <van-icon name="revoke" size="14" />
           {{ t('sidebar.logout') }}
@@ -107,6 +107,7 @@ import type { PickerChangeEventParams } from 'vant';
 import { useSettingsStore, colorPresets } from '@/stores/settings';
 import { useUiStore } from '@/stores/ui';
 import { useAuthStore } from '@/stores/auth';
+import { logoutUser } from '@/utils/authApi';
 
 defineProps<{
   show: boolean;

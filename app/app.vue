@@ -12,6 +12,7 @@ import enUS from 'vant/es/locale/lang/en-US';
 import ruRU from 'vant/es/locale/lang/ru-RU';
 import { useSettingsStore } from '@/stores/settings';
 import { useUiStore } from '@/stores/ui';
+import { restoreSession } from '@/utils/authApi';
 
 useHead({
   title: 'LiftTracker',
@@ -75,4 +76,8 @@ watch(
     }
   },
 );
+
+onMounted(() => {
+  restoreSession();
+});
 </script>

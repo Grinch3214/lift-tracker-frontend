@@ -27,9 +27,20 @@ export const useGuestStore = defineStore('guest', () => {
     guestWorkoutCount.value++;
   }
 
+  // Called once, the moment register/login ever succeeds on this device (see
+  // authApi.ts#authenticate) — permanently retires guest mode here, regardless of the
+  // real count. Without this, logging out on a device that was never used as a guest
+  // (count still 0 — a fresh browser profile, or one that went straight to login) would
+  // hand a real, already-registered user a fresh 10-workout guest allowance post-logout.
+  // Math.max, not a plain set, so it's a no-op if the count already exceeds the limit.
+  function exhaustLimit(): void {
+    guestWorkoutCount.value = Math.max(guestWorkoutCount.value, GUEST_WORKOUT_LIMIT);
+  }
+
   return {
     guestWorkoutCount,
     isGuestLimitReached,
     incrementWorkoutCount,
+    exhaustLimit,
   };
 });

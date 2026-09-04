@@ -106,7 +106,7 @@
   },
   "guest": {
     "limitBanner": "Лимит бесплатных тренировок исчерпан",
-    "limitBannerHint": "Зарегистрируйся, чтобы сохранить прогресс",
+    "limitBannerHint": "Зарегистрируйся или войди, чтобы сохранить прогресс",
     "nudgeTitle": "Осталось {workouts} без регистрации",
     "registerTitle": "Регистрация",
     "loginTitle": "Вход",
@@ -115,7 +115,12 @@
     "registerSubmit": "Зарегистрироваться",
     "loginSubmit": "Войти",
     "switchToLogin": "Уже есть аккаунт? Войти",
-    "switchToRegister": "Нет аккаунта? Зарегистрироваться"
+    "switchToRegister": "Нет аккаунта? Зарегистрироваться",
+    "errorEmailTaken": "Такой email уже зарегистрирован",
+    "errorInvalidCredentials": "Неверный email или пароль",
+    "errorValidation": "Проверь email и пароль (минимум 8 символов)",
+    "errorRateLimited": "Слишком много попыток. Попробуй чуть позже",
+    "errorGeneric": "Что-то пошло не так. Попробуй ещё раз"
   },
   "sidebar": {
     "colorMenuLabel": "Акцентный цвет",

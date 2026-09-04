@@ -246,10 +246,10 @@ function confirm() {
       sheet.value.workoutExerciseId,
       values,
     );
-    if (!hadSetsBefore) {
+    if (!hadSetsBefore && !authStore.isAuthenticated) {
       guestStore.incrementWorkoutCount();
       const remaining = GUEST_WORKOUT_LIMIT - guestStore.guestWorkoutCount;
-      if (!authStore.isAuthenticated && GUEST_NUDGE_MILESTONES.includes(remaining)) {
+      if (GUEST_NUDGE_MILESTONES.includes(remaining)) {
         uiStore.showGuestNudge(remaining);
       }
     }

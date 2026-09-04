@@ -5,6 +5,13 @@ export default defineNuxtConfig({
   ssr: false,
   modules: ['@pinia/nuxt', '@vant/nuxt', '@vueuse/nuxt', '@nuxtjs/i18n'],
   css: ['~/assets/scss/main.scss'],
+  runtimeConfig: {
+    public: {
+      // lift-tracker-backend base URL — see .env.example. Empty default has no real
+      // fallback meaning; the app can't reach a backend without this set.
+      apiBaseUrl: '',
+    },
+  },
   i18n: {
     locales: [
       { code: 'en', file: 'en.json' },

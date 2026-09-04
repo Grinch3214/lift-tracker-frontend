@@ -106,7 +106,7 @@
   },
   "guest": {
     "limitBanner": "Free workout limit reached",
-    "limitBannerHint": "Register to keep your progress",
+    "limitBannerHint": "Register or log in to keep your progress",
     "nudgeTitle": "{workouts} left as a guest",
     "registerTitle": "Register",
     "loginTitle": "Log in",
@@ -115,7 +115,12 @@
     "registerSubmit": "Register",
     "loginSubmit": "Log in",
     "switchToLogin": "Already have an account? Log in",
-    "switchToRegister": "No account yet? Register"
+    "switchToRegister": "No account yet? Register",
+    "errorEmailTaken": "This email is already registered",
+    "errorInvalidCredentials": "Wrong email or password",
+    "errorValidation": "Check your email and password (min 8 characters)",
+    "errorRateLimited": "Too many attempts. Try again in a bit",
+    "errorGeneric": "Something went wrong. Please try again"
   },
   "sidebar": {
     "colorMenuLabel": "Accent color",

@@ -23,7 +23,7 @@ No test suite yet — there is no automated correctness gate. Verify changes by 
 
 **Stack:** Nuxt 4 + TypeScript + Pinia (`@pinia/nuxt`) + Vant 4 (`@vant/nuxt`) + VueUse (`@vueuse/nuxt`) + `@nuxtjs/i18n` + SCSS. Drag-and-drop reordering uses `@vueuse/integrations`'s `useSortable` (wraps `sortablejs`) — neither Vant nor `@vueuse/core` has a list-reorder primitive.
 
-**No backend.** Everything lives in the browser. All persistence is `localStorage` via VueUse's `useStorage`, wrapped inside Pinia stores.
+**Local-first, backend optional.** All persistence is still `localStorage` via VueUse's `useStorage`, wrapped inside Pinia stores — the app works fully offline, with no account, exactly as before. As of v1.3 (in progress) there's now also a sibling repo, `lift-tracker-backend` (one level up, `POST /auth/register`/`login`/`refresh`/`logout` implemented and wired up; `/sync/*` exists backend-side per its `API.md` but has no frontend caller yet). `app/utils/api.ts`/`authApi.ts` talk to it via `runtimeConfig.public.apiBaseUrl` (`.env.example`) — see `app/stores/auth.ts` below. A registered/logged-in session doesn't change how local storage works today; it will become an offline cache once `/sync/*` is wired up (see `docs/02-mvp.md` v1.3, `docs/04-decisions.md`).
 
 **`ssr: false` in `nuxt.config.ts` is load-bearing, don't remove without fixing the underlying issue first.** With SSR on, the server renders with an empty store (no `localStorage` on the server), and Pinia/Nuxt hydration overwrites the client's already-hydrated `useStorage` state with that empty server snapshot on every page load — `useStorage`'s watcher then persists the emptiness back into `localStorage`, silently wiping saved workouts on refresh. Since this app has no server-rendered content to gain from SSR anyway, keeping it off is the correct fix, not a workaround.
 
@@ -174,14 +174,38 @@ app/stores/guest.ts        ← guestWorkoutCount ('lift-tracker-guest-workout-co
                               values at which AddSetSheet.vue triggers ui.ts's guestNudge toast (see below);
                               deliberately not every single workout, and not the sidebar-driven "isAuthenticated"
                               case at all — nudging someone already logged in makes no sense.
-app/stores/auth.ts         ← userEmail ('lift-tracker-user-email', string | null), isAuthenticated (computed,
-                              `userEmail !== null`), logout() (clears it). Deliberately minimal — no
-                              accessToken/refreshToken yet, that's the not-yet-built HTTP-client layer (see
-                              lift-tracker-backend/API.md). userEmail is set directly by GuestAuthModal's
-                              submit() stub (no real request happens) so the rest of the UI (TheSidebar's
-                              account row, GuestLimitGate) can be built and exercised end-to-end ahead of the
-                              real network wiring — when that lands, logout() also needs to revoke the refresh
-                              token via `POST /auth/logout`, not just clear local state.
+                              exhaustLimit() (`guestWorkoutCount = Math.max(current, GUEST_WORKOUT_LIMIT)`) —
+                              called once by authApi.ts#authenticate() on every successful register/login,
+                              regardless of the real count. Without this, a device that logs in without ever
+                              having done a guest workout (count still 0 — a fresh profile, or one that went
+                              straight to login) would hand a real registered user a fresh 10-workout guest
+                              allowance the moment they log back out, defeating the whole limit. AddSetSheet.vue
+                              also stopped calling incrementWorkoutCount() at all while authStore.isAuthenticated
+                              — once exhaustLimit() has run, the raw count no longer needs to track anything.
+app/stores/auth.ts         ← userEmail ('lift-tracker-user-email') and refreshToken
+                              ('lift-tracker-refresh-token') persisted via useStorage; accessToken is a plain
+                              (non-persisted) `ref` — deliberately excluded from localStorage since it's a
+                              live 15-minute session handle, unlike everything else this app stores there;
+                              cleared on every reload, re-derived by authApi.ts#restoreSession() (called once
+                              from app.vue's onMounted) via POST /auth/refresh using the persisted
+                              refreshToken. isAuthenticated (computed, `userEmail !== null`) — note this can
+                              be true with accessToken still null right after a reload, until restoreSession()
+                              resolves; nothing in the app currently makes an authenticated request eagerly on
+                              load, so this window is harmless today but matters once `/sync/*` calls exist.
+                              setSession()/clearSession() are the only mutations — pure state, no HTTP calls
+                              (same "keep the domain out of unrelated concerns" reasoning as guest.ts below);
+                              the actual `/auth/*` requests live in app/utils/authApi.ts instead
+                              (registerUser/loginUser/logoutUser/restoreSession), which is also where
+                              GuestAuthModal's submit() and TheSidebar's logout button call into — a plain
+                              utils module rather than store actions, to avoid a circular import (authApi.ts
+                              needs to call into the store; the store must not need to call back into
+                              authApi.ts). app/utils/api.ts (`apiFetch`/`ApiError`) is the thin $fetch wrapper
+                              underneath — reads `runtimeConfig.public.apiBaseUrl` (see .env.example),
+                              re-throws ofetch's FetchError as `ApiError{status, message}` parsed from Nest's
+                              `{statusCode, message, error}` body shape. No Authorization-header injection or
+                              401-refresh-retry interceptor yet — nothing calls a Bearer-protected endpoint
+                              yet (register/login/refresh/logout all authenticate via body fields, not a
+                              header); add that to apiFetch when the first `/sync/*` call needs it, not before.
 ```
 
 Workouts only store `exerciseId` (a string pointing into the static catalog), never exercise name/equipment directly — components resolve display data via `getExerciseById`.
@@ -240,8 +264,12 @@ app/layouts/default.vue           ← van-config-provider(dark) + TheHeader + <s
                                         (register/login) seeded from `uiStore.authModal.initialMode` on open
                                         (`'register'` from LimitGate/RemainingNudge, `'login'` from
                                         TheSidebar); a link at the bottom toggles register/login locally
-                                        without closing. `submit()` is a stub — see the note below on cloud
-                                        sync.
+                                        without closing. `submit()` calls authApi.ts's registerUser()/
+                                        loginUser() for real (`POST /auth/register`/`POST /auth/login`);
+                                        `:loading` on the confirm button + a local `errorMessage` mapped from
+                                        `ApiError.status` (409 taken / 401 bad creds / 429 rate-limited / 400
+                                        validation / else generic — see guest.error* i18n keys) rather than
+                                        showing the backend's raw English message text in a bilingual UI.
 
   app/pages/index.vue ("/")          ← Workout page for ui.selectedDate; swipe left/right (useSwipe) moves
                                         ui.selectedDate ±1 day, with a direction-aware Transition (slide+fade)
