@@ -6,24 +6,12 @@
     </main>
     <TheFooter />
 
-    <van-button
-      type="primary"
-      icon="plus"
-      size="small"
-      class="add-day"
-      @click="uiStore.exercisePicker.show = true"
-    />
+    <GuestLimitGate />
 
     <WorkoutExercisePicker />
     <WorkoutAddSetSheet />
   </van-config-provider>
 </template>
-
-<script setup lang="ts">
-import { useUiStore } from '@/stores/ui';
-
-const uiStore = useUiStore();
-</script>
 
 <style scoped lang="scss">
 .default-layout {
@@ -37,14 +25,5 @@ const uiStore = useUiStore();
 main {
   // Reserve space below page content.
   padding-block-end: 60px;
-}
-.add-day {
-  width: 48px;
-  height: 48px;
-  position: fixed;
-  z-index: 4;
-  inset-block-end: calc(var(--van-tabbar-height, 50px) + 24px);
-  inset-inline-end: 24px;
-  box-shadow: 0 4px 16px rgb(var(--van-primary-color-channels) / 40%);
 }
 </style>

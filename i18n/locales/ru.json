@@ -101,6 +101,18 @@
   "calendar": {
     "today": "Сегодня"
   },
+  "guest": {
+    "limitBanner": "Лимит бесплатных тренировок исчерпан",
+    "limitBannerHint": "Зарегистрируйся, чтобы сохранить прогресс",
+    "registerTitle": "Регистрация",
+    "loginTitle": "Вход",
+    "emailLabel": "Email",
+    "passwordLabel": "Пароль",
+    "registerSubmit": "Зарегистрироваться",
+    "loginSubmit": "Войти",
+    "switchToLogin": "Уже есть аккаунт? Войти",
+    "switchToRegister": "Нет аккаунта? Зарегистрироваться"
+  },
   "sidebar": {
     "colorMenuLabel": "Акцентный цвет",
     "colors": {

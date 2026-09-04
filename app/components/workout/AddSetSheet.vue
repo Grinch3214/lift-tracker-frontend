@@ -126,6 +126,7 @@
 import { useUiStore } from '@/stores/ui';
 import { useWorkoutStore } from '@/stores/workout';
 import { useSettingsStore } from '@/stores/settings';
+import { useGuestStore } from '@/stores/guest';
 import { isBodyweight } from '@/utils/format';
 import { getExerciseById, exerciseName } from '@/utils/exercises';
 
@@ -133,6 +134,7 @@ const { t } = useI18n();
 const uiStore = useUiStore();
 const workoutStore = useWorkoutStore();
 const settingsStore = useSettingsStore();
+const guestStore = useGuestStore();
 
 const DUMBBELL_COUNTS = [1, 2] as const;
 const weightStr = ref('');
@@ -228,11 +230,17 @@ function confirm() {
       values,
     );
   } else {
+    const workoutBefore = workoutStore.getWorkoutByDate(sheet.value.date);
+    const hadSetsBefore =
+      (workoutBefore?.exercises.reduce((sum, e) => sum + e.sets.length, 0) ??
+        0) > 0;
+
     workoutStore.addSet(
       sheet.value.date,
       sheet.value.workoutExerciseId,
       values,
     );
+    if (!hadSetsBefore) guestStore.incrementWorkoutCount();
     if (settingsStore.restTimerMode === 'auto') {
       uiStore.startRestTimer(settingsStore.restTimerDuration);
     }

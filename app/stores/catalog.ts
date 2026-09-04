@@ -22,6 +22,12 @@ export const useCatalogStore = defineStore('catalog', () => {
     'lift-tracker-exercise-order',
     {},
   );
+  // Companion timestamp for groupOrder+exerciseOrder together — the backend stores them as
+  // one `catalog_order` row per user, so both reorder actions bump this single field.
+  const catalogOrderUpdatedAt = useStorage<string>(
+    'lift-tracker-catalog-order-updated-at',
+    '',
+  );
 
   function addMuscleGroup(name: string): MuscleGroup {
     const group: MuscleGroup = {
@@ -29,6 +35,7 @@ export const useCatalogStore = defineStore('catalog', () => {
       name,
       order: 0,
       isCustom: true,
+      updatedAt: new Date().toISOString(),
     };
     customMuscleGroups.value.push(group);
     return group;
@@ -47,6 +54,7 @@ export const useCatalogStore = defineStore('catalog', () => {
       isCustom: true,
       equipment,
       trackingType,
+      updatedAt: new Date().toISOString(),
     };
     customExercises.value.unshift(exercise);
     return exercise;
@@ -64,12 +72,14 @@ export const useCatalogStore = defineStore('catalog', () => {
     const group = findMuscleGroup(id);
     if (!group) return;
     group.name = name;
+    group.updatedAt = new Date().toISOString();
   }
 
   function deleteMuscleGroup(id: string): void {
     const group = findMuscleGroup(id);
     if (!group) return;
     group.isDeleted = true;
+    group.updatedAt = new Date().toISOString();
   }
 
   function updateExercise(
@@ -83,16 +93,19 @@ export const useCatalogStore = defineStore('catalog', () => {
     const exercise = findExercise(id);
     if (!exercise) return;
     Object.assign(exercise, values);
+    exercise.updatedAt = new Date().toISOString();
   }
 
   function deleteExercise(id: string): void {
     const exercise = findExercise(id);
     if (!exercise) return;
     exercise.isDeleted = true;
+    exercise.updatedAt = new Date().toISOString();
   }
 
   function reorderMuscleGroups(orderedIds: string[]): void {
     groupOrder.value = orderedIds;
+    catalogOrderUpdatedAt.value = new Date().toISOString();
   }
 
   function reorderExercises(muscleGroupId: string, orderedIds: string[]): void {
@@ -100,6 +113,7 @@ export const useCatalogStore = defineStore('catalog', () => {
       ...exerciseOrder.value,
       [muscleGroupId]: orderedIds,
     };
+    catalogOrderUpdatedAt.value = new Date().toISOString();
   }
 
   return {
@@ -107,6 +121,7 @@ export const useCatalogStore = defineStore('catalog', () => {
     customExercises,
     groupOrder,
     exerciseOrder,
+    catalogOrderUpdatedAt,
     addMuscleGroup,
     addExercise,
     updateMuscleGroup,

@@ -101,6 +101,18 @@
   "calendar": {
     "today": "Today"
   },
+  "guest": {
+    "limitBanner": "Free workout limit reached",
+    "limitBannerHint": "Register to keep your progress",
+    "registerTitle": "Register",
+    "loginTitle": "Log in",
+    "emailLabel": "Email",
+    "passwordLabel": "Password",
+    "registerSubmit": "Register",
+    "loginSubmit": "Log in",
+    "switchToLogin": "Already have an account? Log in",
+    "switchToRegister": "No account yet? Register"
+  },
   "sidebar": {
     "colorMenuLabel": "Accent color",
     "colors": {

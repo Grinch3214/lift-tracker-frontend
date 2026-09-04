@@ -233,3 +233,10 @@
 ### Added
 
 - Shoulders catalog filled in for real: 16 exercises (barbell/machine/Smith/dumbbell seated press variants, Arnold press, lateral raise in 5 variants including two lever-machine ones and a cable one-arm version, front raise with dumbbell and plate, upright row, seated rear-delt raise), replacing the old 5-exercise placeholder set. Catalog is now 10 groups / 115 exercises total.
+
+## 2026-09-04
+
+### Added
+
+- `updatedAt` on custom `MuscleGroup`/`Exercise` entries (stamped on every add/update/delete) and a companion `catalogOrderUpdatedAt` for `groupOrder`/`exerciseOrder` together — groundwork for cloud-sync LWW, matching the backend's wire contracts. First step of v1.3; `Workout.updatedAt` landed earlier (2026-09-02).
+- Guest workout counter (`app/stores/guest.ts`, `guestWorkoutCount`/`isGuestLimitReached`) — counts a day as a workout on its first logged set, not on the `Workout` record existing. Not wired to any UI gate yet; that's the next step.

@@ -139,6 +139,26 @@ app/stores/catalog.ts      ← user-created catalog additions, persisted separat
                               everywhere. groupOrder / exerciseOrder (keyed by muscleGroupId) hold drag-and-drop
                               order as plain id lists, covering built-in AND custom entries together — see the
                               note below on why order can't just live on Exercise/MuscleGroup themselves.
+                              Every add/update/delete on a custom group or exercise also stamps `updatedAt`
+                              (ISO timestamp) on that entry — built-in entries never get one. catalogOrderUpdatedAt
+                              ('lift-tracker-catalog-order-updated-at') is a companion timestamp shared by both
+                              reorderMuscleGroups/reorderExercises. Both exist to satisfy the not-yet-built
+                              cloud-sync backend's LWW contract (`lift-tracker-backend`, a sibling repo one
+                              level up — see its ARCHITECTURE.md/API.md), same reasoning as Workout.updatedAt
+                              above.
+app/stores/guest.ts        ← guestWorkoutCount ('lift-tracker-guest-workout-count'), the free-tier counter
+                              for the not-yet-built registration gate (docs/02-mvp.md, v1.3). Monotonic — only
+                              incrementWorkoutCount() (++) exists, no decrement, so deleting/recreating a
+                              workout can't be used to dodge the limit. Deliberately NOT counted by raw
+                              Workout/localStorage record count (a day gets a Workout row just by being opened,
+                              via getOrCreateWorkoutByDate, even with zero sets logged) — counted by "first
+                              SetEntry logged for that day" instead, checked in AddSetSheet.vue#confirm() (sums
+                              sets across every exercise in that date's Workout *before* calling
+                              workoutStore.addSet(), and only increments if that sum was 0) rather than inside
+                              workoutStore itself, to keep the guest/registration domain out of the workout
+                              store. isGuestLimitReached (computed, `guestWorkoutCount >= GUEST_WORKOUT_LIMIT`,
+                              10) is exported specifically so future gated features can branch on one boolean
+                              instead of re-deriving the comparison.
 ```
 
 Workouts only store `exerciseId` (a string pointing into the static catalog), never exercise name/equipment directly — components resolve display data via `getExerciseById`.
