@@ -13,15 +13,11 @@
     </div>
 
     <van-field
-      v-model="email"
-      type="email"
-      :placeholder="t('guest.emailLabel')"
-      class="auth-modal__input"
-    />
-    <van-field
-      v-model="password"
-      type="password"
-      :placeholder="t('guest.passwordLabel')"
+      v-for="field in FIELDS"
+      :key="field.key"
+      v-model="form[field.key]"
+      :type="field.type"
+      :placeholder="t(field.placeholderKey)"
       class="auth-modal__input"
     />
 
@@ -59,9 +55,20 @@ import { ApiError } from '@/utils/api';
 const { t } = useI18n();
 const uiStore = useUiStore();
 
+const ERROR_KEYS: Record<number, string> = {
+  400: 'guest.errorValidation',
+  401: 'guest.errorInvalidCredentials',
+  409: 'guest.errorEmailTaken',
+  429: 'guest.errorRateLimited',
+};
+
+const FIELDS = [
+  { key: 'email', type: 'email', placeholderKey: 'guest.emailLabel' },
+  { key: 'password', type: 'password', placeholderKey: 'guest.passwordLabel' },
+] as const;
+
 const mode = ref<'register' | 'login'>('register');
-const email = ref('');
-const password = ref('');
+const form = reactive({ email: '', password: '' });
 const loading = ref(false);
 const errorMessage = ref('');
 
@@ -70,8 +77,8 @@ watch(
   (shown) => {
     if (shown) {
       mode.value = uiStore.authModal.initialMode;
-      email.value = '';
-      password.value = '';
+      form.email = '';
+      form.password = '';
       errorMessage.value = '';
     }
   },
@@ -83,29 +90,27 @@ function toggleMode() {
 }
 
 function errorMessageFor(status: number): string {
-  if (status === 409) return t('guest.errorEmailTaken');
-  if (status === 401) return t('guest.errorInvalidCredentials');
-  if (status === 429) return t('guest.errorRateLimited');
-  if (status === 400) return t('guest.errorValidation');
-  return t('guest.errorGeneric');
+  return t(ERROR_KEYS[status] ?? 'guest.errorGeneric');
 }
 
 async function submit() {
-  const trimmedEmail = email.value.trim();
-  if (!trimmedEmail || !password.value) return;
+  const trimmedEmail = form.email.trim();
+  if (!trimmedEmail || !form.password) return;
 
   errorMessage.value = '';
   loading.value = true;
   try {
     if (mode.value === 'register') {
-      await registerUser(trimmedEmail, password.value);
+      await registerUser(trimmedEmail, form.password);
     } else {
-      await loginUser(trimmedEmail, password.value);
+      await loginUser(trimmedEmail, form.password);
     }
     uiStore.authModal.show = false;
   } catch (err) {
     errorMessage.value =
-      err instanceof ApiError ? errorMessageFor(err.status) : t('guest.errorGeneric');
+      err instanceof ApiError
+        ? errorMessageFor(err.status)
+        : t('guest.errorGeneric');
   } finally {
     loading.value = false;
   }
