@@ -31,7 +31,7 @@
 import { showConfirmDialog } from 'vant';
 import { useSwipe } from '@vueuse/core';
 import { useSortable } from '@vueuse/integrations/useSortable';
-import type { SetEntry, WorkoutExercise } from '~~/types';
+import type { Exercise, SetEntry, WorkoutExercise } from '~~/types';
 import { useWorkoutStore } from '@/stores/workout';
 import { useUiStore } from '@/stores/ui';
 import { getExerciseById } from '@/utils/exercises';
@@ -149,8 +149,22 @@ const summaryText = computed(() =>
   }),
 );
 
-function getExercise(exerciseId: string) {
-  return getExerciseById(exerciseId)!;
+// Falls back to a minimal stand-in instead of crashing the whole page when exerciseId
+// doesn't resolve to any known catalog entry (built-in or custom) — can legitimately
+// happen with data that reached this device via sync (another device's custom exercise
+// not yet pulled here, or any other data-integrity edge case). isCustom: true makes
+// exerciseName() render the id itself rather than trying (and failing) a catalog
+// translation lookup for it.
+function getExercise(exerciseId: string): Exercise {
+  return (
+    getExerciseById(exerciseId) ?? {
+      id: exerciseId,
+      muscleGroupId: '',
+      name: exerciseId,
+      isCustom: true,
+      trackingType: 'weight-reps',
+    }
+  );
 }
 
 function openAddSet(we: WorkoutExercise) {

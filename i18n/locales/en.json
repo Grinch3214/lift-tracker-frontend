@@ -87,6 +87,9 @@
     "setWordOne": "set",
     "setWordFew": "sets",
     "setWordMany": "sets",
+    "workoutWordOne": "workout",
+    "workoutWordFew": "workouts",
+    "workoutWordMany": "workouts",
     "equipment": {
       "barbell": "Barbell",
       "dumbbell": "Dumbbell",
@@ -101,8 +104,28 @@
   "calendar": {
     "today": "Today"
   },
+  "guest": {
+    "limitBanner": "Free workout limit reached",
+    "limitBannerHint": "Register or log in to keep your progress",
+    "nudgeTitle": "{workouts} left as a guest",
+    "registerTitle": "Register",
+    "loginTitle": "Log in",
+    "emailLabel": "Email",
+    "passwordLabel": "Password",
+    "registerSubmit": "Register",
+    "loginSubmit": "Log in",
+    "switchToLogin": "Already have an account? Log in",
+    "switchToRegister": "No account yet? Register",
+    "errorEmailTaken": "This email is already registered",
+    "errorInvalidCredentials": "Wrong email or password",
+    "errorValidation": "Check your email and password (min 8 characters)",
+    "errorRateLimited": "Too many attempts. Try again in a bit",
+    "errorGeneric": "Something went wrong. Please try again"
+  },
   "sidebar": {
     "colorMenuLabel": "Accent color",
+    "loginMenuLabel": "Log in",
+    "logout": "Log out",
     "colors": {
       "blue": "Blue",
       "green": "Green",

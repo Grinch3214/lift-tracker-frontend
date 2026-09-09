@@ -6,4 +6,5 @@ export interface Workout {
   date: string; // 'YYYY-MM-DD'
   exercises: WorkoutExercise[];
   createdAt: string; // ISO timestamp
+  updatedAt: string; // ISO timestamp, bumped on every mutation — see workoutStore's `touch()`
 }

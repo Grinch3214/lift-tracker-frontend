@@ -12,4 +12,7 @@ export interface Exercise {
   // Soft-delete: hidden from the picker but still resolvable by id, so past workouts
   // that logged this exercise keep displaying correctly. Custom exercises only.
   isDeleted?: boolean;
+  // ISO timestamp, bumped on every mutation. Custom exercises only — required for cloud-sync
+  // LWW (see lift-tracker-backend's WireCustomExercise); built-in entries never set this.
+  updatedAt?: string;
 }

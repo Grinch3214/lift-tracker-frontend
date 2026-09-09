@@ -10,8 +10,11 @@
 import { Locale } from 'vant';
 import enUS from 'vant/es/locale/lang/en-US';
 import ruRU from 'vant/es/locale/lang/ru-RU';
+import { useOnline, useDocumentVisibility } from '@vueuse/core';
 import { useSettingsStore } from '@/stores/settings';
 import { useUiStore } from '@/stores/ui';
+import { useAuthStore } from '@/stores/auth';
+import { runFullSync } from '@/utils/syncApi';
 
 useHead({
   title: 'LiftTracker',
@@ -27,6 +30,18 @@ useHead({
 const { locale } = useI18n();
 const settingsStore = useSettingsStore();
 const uiStore = useUiStore();
+const authStore = useAuthStore();
+
+const isOnline = useOnline();
+const visibility = useDocumentVisibility();
+
+const SYNC_BACKSTOP_INTERVAL_MS = 7 * 60 * 1000;
+let syncBackstopInterval: ReturnType<typeof setInterval> | null = null;
+
+function triggerSync() {
+  if (!authStore.isAuthenticated || !isOnline.value) return;
+  runFullSync().catch(() => {});
+}
 
 watch(
   locale,
@@ -74,5 +89,30 @@ watch(
       uiStore.resetRestTimer(duration);
     }
   },
+);
+
+watch(visibility, triggerSync, { immediate: true });
+
+watch(isOnline, (online) => {
+  if (online) triggerSync();
+});
+
+watch(
+  () =>
+    authStore.isAuthenticated &&
+    isOnline.value &&
+    visibility.value === 'visible',
+  (shouldRun) => {
+    if (shouldRun && !syncBackstopInterval) {
+      syncBackstopInterval = setInterval(
+        triggerSync,
+        SYNC_BACKSTOP_INTERVAL_MS,
+      );
+    } else if (!shouldRun && syncBackstopInterval) {
+      clearInterval(syncBackstopInterval);
+      syncBackstopInterval = null;
+    }
+  },
+  { immediate: true },
 );
 </script>

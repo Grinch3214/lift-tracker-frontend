@@ -59,6 +59,30 @@
           <van-icon name="arrow" size="14" class="sidebar__menu-item-arrow" />
         </button>
       </li>
+      <li v-if="!authStore.isAuthenticated">
+        <button
+          type="button"
+          class="sidebar__menu-item"
+          @click="uiStore.authModal = { show: true, initialMode: 'login' }"
+        >
+          <van-icon name="user-o" size="16" />
+          <span class="sidebar__menu-item-label">{{
+            t('sidebar.loginMenuLabel')
+          }}</span>
+          <van-icon name="arrow" size="14" class="sidebar__menu-item-arrow" />
+        </button>
+      </li>
+      <li v-else class="sidebar__account-row">
+        <span class="sidebar__account-email">{{ authStore.userEmail }}</span>
+        <button
+          type="button"
+          class="sidebar__account-logout"
+          @click="logoutUser()"
+        >
+          <van-icon name="revoke" size="14" />
+          {{ t('sidebar.logout') }}
+        </button>
+      </li>
     </ul>
 
     <van-popup
@@ -81,6 +105,9 @@
 <script setup lang="ts">
 import type { PickerChangeEventParams } from 'vant';
 import { useSettingsStore, colorPresets } from '@/stores/settings';
+import { useUiStore } from '@/stores/ui';
+import { useAuthStore } from '@/stores/auth';
+import { logoutUser } from '@/utils/authApi';
 
 defineProps<{
   show: boolean;
@@ -92,6 +119,8 @@ defineEmits<{
 
 const { t, locale, locales, setLocale } = useI18n();
 const settingsStore = useSettingsStore();
+const uiStore = useUiStore();
+const authStore = useAuthStore();
 
 const showTimerModal = ref(false);
 const showColorPicker = ref(false);
@@ -162,6 +191,37 @@ function onColorChange({ selectedOptions }: PickerChangeEventParams) {
   &__menu-list--bottom {
     margin-block-start: auto;
     margin-block-end: 0;
+  }
+
+  &__account-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 4px;
+  }
+
+  &__account-email {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    color: var(--van-text-color-2);
+    font-size: 13px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__account-logout {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 8px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--van-text-color-2);
+    font-size: 13px;
+    cursor: pointer;
   }
 
   &__locale-btns {

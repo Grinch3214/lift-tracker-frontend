@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(netstat -ano*)",
+      "Bash(cd \"c:\\Users\\Hulk\\Desktop\\LiftTracker\" && npm run dev)",
+      "Bash(cd \"/c/Users/Hulk/Desktop/lift-tracker-backend\" && npx tsc --noEmit -p tsconfig.json 2>&1)"
+    ]
+  }
+}
