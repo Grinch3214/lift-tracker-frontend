@@ -7,12 +7,14 @@
     class="tab-bar"
     route
   >
-    <van-tabbar-item icon="notes-o" to="/">{{
-      t('nav.workout')
-    }}</van-tabbar-item>
-    <van-tabbar-item icon="calendar-o" to="/history">{{
-      t('nav.history')
-    }}</van-tabbar-item>
+    <van-tabbar-item
+      v-for="tab in TABS"
+      :key="tab.to"
+      :icon="tab.icon"
+      :to="tab.to"
+    >
+      {{ t(tab.labelKey) }}
+    </van-tabbar-item>
   </van-tabbar>
 </template>
 
@@ -21,6 +23,11 @@ import { useSettingsStore } from '@/stores/settings';
 
 const { t } = useI18n();
 const settingsStore = useSettingsStore();
+
+const TABS = [
+  { icon: 'notes-o', to: '/', labelKey: 'nav.workout' },
+  { icon: 'calendar-o', to: '/history', labelKey: 'nav.history' },
+] as const;
 </script>
 
 <style lang="scss" scoped>
