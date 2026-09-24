@@ -118,7 +118,10 @@
     "switchToRegister": "No account yet? Register",
     "errorEmailTaken": "This email is already registered",
     "errorInvalidCredentials": "Wrong email or password",
-    "errorValidation": "Check your email and password (min 8 characters)",
+    "errorValidation": "Check your email and password",
+    "errorInvalidEmail": "Enter a valid email",
+    "errorWeakPassword": "Password must be at least 8 characters and contain at least one uppercase letter",
+    "errorPasswordRequired": "Enter your password",
     "errorRateLimited": "Too many attempts. Try again in a bit",
     "errorGeneric": "Something went wrong. Please try again"
   },

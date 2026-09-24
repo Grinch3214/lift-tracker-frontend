@@ -359,6 +359,12 @@ app/layouts/default.vue           ← van-config-provider(dark) + TheHeader + <s
                                         `ApiError.status` (409 taken / 401 bad creds / 429 rate-limited / 400
                                         validation / else generic — see guest.error* i18n keys) rather than
                                         showing the backend's raw English message text in a bilingual UI.
+                                        Before any request, `submit()` runs `app/utils/validation.ts`
+                                        (`isValidEmail` both modes; `isValidPassword` — ≥8 chars + one
+                                        `\p{Lu}` capital, any alphabet — register only, login just requires
+                                        non-empty so pre-existing passwords keep working). The capital-letter
+                                        rule is frontend-only; the backend still checks just
+                                        `@IsEmail()`/`@MinLength(8)`.
 
   app/pages/index.vue ("/")          ← Workout page for ui.selectedDate; swipe left/right (useSwipe) moves
                                         ui.selectedDate ±1 day, with a direction-aware Transition (slide+fade)

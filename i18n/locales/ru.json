@@ -118,7 +118,10 @@
     "switchToRegister": "Нет аккаунта? Зарегистрироваться",
     "errorEmailTaken": "Такой email уже зарегистрирован",
     "errorInvalidCredentials": "Неверный email или пароль",
-    "errorValidation": "Проверь email и пароль (минимум 8 символов)",
+    "errorValidation": "Проверь email и пароль",
+    "errorInvalidEmail": "Введи корректный email",
+    "errorWeakPassword": "Пароль должен быть не короче 8 символов и содержать хотя бы одну заглавную букву",
+    "errorPasswordRequired": "Введи пароль",
     "errorRateLimited": "Слишком много попыток. Попробуй чуть позже",
     "errorGeneric": "Что-то пошло не так. Попробуй ещё раз"
   },

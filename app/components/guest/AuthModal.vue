@@ -51,6 +51,7 @@
 import { useUiStore } from '@/stores/ui';
 import { registerUser, loginUser } from '@/utils/authApi';
 import { ApiError } from '@/utils/api';
+import { isValidEmail, isValidPassword } from '@/utils/validation';
 
 const { t } = useI18n();
 const uiStore = useUiStore();
@@ -93,9 +94,21 @@ function errorMessageFor(status: number): string {
   return t(ERROR_KEYS[status] ?? 'guest.errorGeneric');
 }
 
+function validationErrorKey(email: string): string | null {
+  if (!isValidEmail(email)) return 'guest.errorInvalidEmail';
+  if (mode.value === 'register') {
+    return isValidPassword(form.password) ? null : 'guest.errorWeakPassword';
+  }
+  return form.password ? null : 'guest.errorPasswordRequired';
+}
+
 async function submit() {
   const trimmedEmail = form.email.trim();
-  if (!trimmedEmail || !form.password) return;
+  const validationError = validationErrorKey(trimmedEmail);
+  if (validationError) {
+    errorMessage.value = t(validationError);
+    return;
+  }
 
   errorMessage.value = '';
   loading.value = true;
