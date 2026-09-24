@@ -16,9 +16,17 @@
       v-for="field in FIELDS"
       :key="field.key"
       v-model="form[field.key]"
-      :type="field.type"
+      :type="field.key === 'password' && showPassword ? 'text' : field.type"
       :placeholder="t(field.placeholderKey)"
+      :right-icon="
+        field.key === 'password'
+          ? showPassword
+            ? 'eye-o'
+            : 'closed-eye'
+          : undefined
+      "
       class="auth-modal__input"
+      @click-right-icon="showPassword = !showPassword"
     />
 
     <p v-if="errorMessage" class="auth-modal__error">{{ errorMessage }}</p>
@@ -72,6 +80,7 @@ const mode = ref<'register' | 'login'>('register');
 const form = reactive({ email: '', password: '' });
 const loading = ref(false);
 const errorMessage = ref('');
+const showPassword = ref(false);
 
 watch(
   () => uiStore.authModal.show,
@@ -80,6 +89,7 @@ watch(
       mode.value = uiStore.authModal.initialMode;
       form.email = '';
       form.password = '';
+      showPassword.value = false;
       errorMessage.value = '';
     }
   },
