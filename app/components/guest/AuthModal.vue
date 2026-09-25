@@ -16,9 +16,17 @@
       v-for="field in FIELDS"
       :key="field.key"
       v-model="form[field.key]"
-      :type="field.type"
+      :type="field.key === 'password' && showPassword ? 'text' : field.type"
       :placeholder="t(field.placeholderKey)"
+      :right-icon="
+        field.key === 'password'
+          ? showPassword
+            ? 'eye-o'
+            : 'closed-eye'
+          : undefined
+      "
       class="auth-modal__input"
+      @click-right-icon="showPassword = !showPassword"
     />
 
     <p v-if="errorMessage" class="auth-modal__error">{{ errorMessage }}</p>
@@ -51,6 +59,7 @@
 import { useUiStore } from '@/stores/ui';
 import { registerUser, loginUser } from '@/utils/authApi';
 import { ApiError } from '@/utils/api';
+import { isValidEmail, isValidPassword } from '@/utils/validation';
 
 const { t } = useI18n();
 const uiStore = useUiStore();
@@ -71,6 +80,7 @@ const mode = ref<'register' | 'login'>('register');
 const form = reactive({ email: '', password: '' });
 const loading = ref(false);
 const errorMessage = ref('');
+const showPassword = ref(false);
 
 watch(
   () => uiStore.authModal.show,
@@ -79,6 +89,7 @@ watch(
       mode.value = uiStore.authModal.initialMode;
       form.email = '';
       form.password = '';
+      showPassword.value = false;
       errorMessage.value = '';
     }
   },
@@ -93,9 +104,21 @@ function errorMessageFor(status: number): string {
   return t(ERROR_KEYS[status] ?? 'guest.errorGeneric');
 }
 
+function validationErrorKey(email: string): string | null {
+  if (!isValidEmail(email)) return 'guest.errorInvalidEmail';
+  if (mode.value === 'register') {
+    return isValidPassword(form.password) ? null : 'guest.errorWeakPassword';
+  }
+  return form.password ? null : 'guest.errorPasswordRequired';
+}
+
 async function submit() {
   const trimmedEmail = form.email.trim();
-  if (!trimmedEmail || !form.password) return;
+  const validationError = validationErrorKey(trimmedEmail);
+  if (validationError) {
+    errorMessage.value = t(validationError);
+    return;
+  }
 
   errorMessage.value = '';
   loading.value = true;

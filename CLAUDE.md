@@ -62,17 +62,19 @@ app/utils/id.ts             ← generateId() — crypto.randomUUID() when availa
                               the first id-generating action. Always use this helper, never call
                               crypto.randomUUID() directly.
 
-app/data/muscle-groups.ts  ← static seed data: 10 muscle groups, 115 exercises (id, name, muscleGroupId,
+app/data/muscle-groups.ts  ← static seed data: 11 muscle groups, 134 exercises (id, name, muscleGroupId,
                               equipment, trackingType). `name` here is an English dev fallback only — never
                               rendered directly, see i18n below. `equipment` is optional and occasionally
                               omitted on purpose (e.g. `front-raise-plate` — a plate isn't one of the existing
                               `EquipmentType` values and doesn't warrant a new one for a single exercise, so it
                               just has no tag, same precedent as cardio's time-distance machines). Being filled
                               in for real muscle-group by muscle-group (chest, back, trapezius, shoulders,
-                              cardio, biceps, triceps, forearm done — "arms" no longer exists as a group, split
-                              into separate "biceps"/"triceps"/"forearm" groups; "trapezius" split out of
-                              "back" the same way); legs/core still hold the original ~6-per-group placeholder
-                              set from the initial rebuild.
+                              cardio, biceps, triceps, forearm, legs, calves done — "arms" no longer exists as
+                              a group, split into separate "biceps"/"triceps"/"forearm" groups; "trapezius"
+                              split out of "back" the same way; "calves" split out of "legs" the same way,
+                              specifically so it's its own entry in the muscle-group picker instead of buried
+                              inside a 19-exercise "legs" list); core still holds the original ~6-per-group
+                              placeholder set from the initial rebuild.
 app/utils/exercises.ts     ← lookups merging the static catalog with user-created entries from
                               app/stores/catalog.ts: getAllMuscleGroups, getExerciseById, getMuscleGroupById,
                               getExercisesByMuscleGroup (custom entries first, so a freshly-added one shows at
@@ -359,6 +361,12 @@ app/layouts/default.vue           ← van-config-provider(dark) + TheHeader + <s
                                         `ApiError.status` (409 taken / 401 bad creds / 429 rate-limited / 400
                                         validation / else generic — see guest.error* i18n keys) rather than
                                         showing the backend's raw English message text in a bilingual UI.
+                                        Before any request, `submit()` runs `app/utils/validation.ts`
+                                        (`isValidEmail` both modes; `isValidPassword` — ≥8 chars + one
+                                        `\p{Lu}` capital, any alphabet — register only, login just requires
+                                        non-empty so pre-existing passwords keep working). The capital-letter
+                                        rule is frontend-only; the backend still checks just
+                                        `@IsEmail()`/`@MinLength(8)`.
 
   app/pages/index.vue ("/")          ← Workout page for ui.selectedDate; swipe left/right (useSwipe) moves
                                         ui.selectedDate ±1 day, with a direction-aware Transition (slide+fade)
