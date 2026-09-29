@@ -22,6 +22,7 @@
         placement="bottom-end"
         overlay
         :overlay-style="{ background: 'transparent' }"
+        class="exercise-card__menu"
         @select="onMenuSelect"
       >
         <template #reference>
@@ -207,6 +208,11 @@ function isPR(set: SetEntry): boolean {
   &__equipment {
     font-weight: 400;
     opacity: 0.6;
+  }
+
+  &__menu {
+    --van-popover-action-width: auto;
+    white-space: nowrap;
   }
 
   &__menu-btn {
