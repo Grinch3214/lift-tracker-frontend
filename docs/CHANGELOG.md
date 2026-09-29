@@ -274,3 +274,9 @@
 ### Added
 
 - Legs catalog filled in for real: 19 exercises (barbell/Smith machine squat, leg press, seated/lying leg curl, leg extension, hack squat, barbell/Smith front squat, dumbbell/barbell lunge, bodyweight/dumbbell Bulgarian split squat, dumbbell sumo squat, seated hip adduction/abduction, standing cable hip abduction, barbell/machine glute bridge), replacing the old 7-exercise placeholder set. Calves split out into its own muscle group (7 exercises: bodyweight/machine/Smith standing calf raise, toe press, machine/barbell/dumbbell seated calf raise) — previously buried inside "Legs" as a single `calf-raise` entry, now its own top-level entry in the picker so it doesn't get lost in a 19-exercise list. Catalog is now 11 groups / 134 exercises total.
+
+## 2026-09-29
+
+### Changed
+
+- Synced data (workouts, custom muscle groups/exercises, catalog order) moved from `localStorage` to IndexedDB so long-term history no longer runs into localStorage's ~5–10MB limit (no migration of old localStorage data — no production users yet).

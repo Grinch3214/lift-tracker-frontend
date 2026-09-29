@@ -23,7 +23,7 @@ No automated test suite yet — no correctness gate in CI. `playwright` is insta
 
 **Stack:** Nuxt 4 + TypeScript + Pinia (`@pinia/nuxt`) + Vant 4 (`@vant/nuxt`) + VueUse (`@vueuse/nuxt`) + `@nuxtjs/i18n` + SCSS. Drag-and-drop reordering uses `@vueuse/integrations`'s `useSortable` (wraps `sortablejs`) — neither Vant nor `@vueuse/core` has a list-reorder primitive.
 
-**Local-first, backend optional.** All persistence is still `localStorage` via VueUse's `useStorage`, wrapped inside Pinia stores — the app works fully offline, with no account, exactly as before. As of v1.3 there's now also a sibling repo, `lift-tracker-backend` (one level up): auth (`/auth/*`) and sync (`/sync/*`) are both implemented and wired up from the frontend — see `app/stores/auth.ts`/`sync.ts` and `app/utils/api.ts`/`authApi.ts`/`syncApi.ts` below. `runtimeConfig.public.apiBaseUrl` (`.env.example`) points at it. Sync fires right after register/login and again on `app.vue`'s background triggers (visibility change, reconnect, a backstop timer — see app.vue below); nothing wires it to individual store mutations. Local storage's role doesn't change even once synced — it's not replaced by the backend, mutations still write there first and instantly; the backend is a copy kept in sync, not a new source of truth the UI waits on (see `docs/02-mvp.md` v1.3, `docs/04-decisions.md`).
+**Local-first, backend optional.** All persistence is local, wrapped inside Pinia stores — the app works fully offline, with no account, exactly as before. Two local backends, split by what's synced: everything synced with the backend (workouts, custom muscle groups/exercises, catalog order) lives in **IndexedDB** via `app/utils/idbStorage.ts#useIdbStorage()` — the data that grows without bound over years of use and would outgrow localStorage's ~5–10MB cap; small fixed-size state (settings, auth, guest counter, `lastSyncedAt`) stays in `localStorage` via VueUse's `useStorage`. As of v1.3 there's now also a sibling repo, `lift-tracker-backend` (one level up): auth (`/auth/*`) and sync (`/sync/*`) are both implemented and wired up from the frontend — see `app/stores/auth.ts`/`sync.ts` and `app/utils/api.ts`/`authApi.ts`/`syncApi.ts` below. `runtimeConfig.public.apiBaseUrl` (`.env.example`) points at it. Sync fires right after register/login and again on `app.vue`'s background triggers (visibility change, reconnect, a backstop timer — see app.vue below); nothing wires it to individual store mutations. Local storage's role doesn't change even once synced — it's not replaced by the backend, mutations still write there first and instantly; the backend is a copy kept in sync, not a new source of truth the UI waits on (see `docs/02-mvp.md` v1.3, `docs/04-decisions.md`).
 
 **`ssr: false` in `nuxt.config.ts` is load-bearing, don't remove without fixing the underlying issue first.** With SSR on, the server renders with an empty store (no `localStorage` on the server), and Pinia/Nuxt hydration overwrites the client's already-hydrated `useStorage` state with that empty server snapshot on every page load — `useStorage`'s watcher then persists the emptiness back into `localStorage`, silently wiping saved workouts on refresh. Since this app has no server-rendered content to gain from SSR anyway, keeping it off is the correct fix, not a workaround.
 
@@ -53,6 +53,21 @@ Skip sections that don't apply (most components have no props/emits/router/expos
 types/*.ts                 ← shared interfaces: MuscleGroup, Exercise, Workout, WorkoutExercise, SetEntry,
                               EquipmentType, TrackingType. All ids are string, generated via
                               app/utils/id.ts#generateId() at creation time
+
+app/utils/idbStorage.ts     ← useIdbStorage(key, initial) → {state, load} — a ref persisted to IndexedDB
+                              (idb-keyval, db 'lift-tracker', store 'keyval', one key per collection).
+                              IndexedDB's API is async-only (unlike localStorage.getItem), so `state` starts at
+                              `initial` and gets its stored value only once `load()` resolves — nothing to do
+                              with SSR (which is off). The persist watcher (deep, JSON round-trip before `set()`
+                              — reactive Proxies fail structured clone with DataCloneError) is registered only
+                              after that. No migration from the old localStorage keys and no localStorage
+                              fallback — the app had no production users when this landed.
+app/plugins/idb-load.client.ts ← awaits workoutStore.load() + catalogStore.load() before the app mounts (Nuxt
+                              awaits async plugins). Load-bearing: without it components and app.vue's
+                              `{immediate: true}` sync triggers would see still-empty stores — the first sync
+                              would then trip syncApi.ts's "looks wiped" full-pull heuristic, and a mutation
+                              made before loading would be overwritten. Any new IDB-backed store must be added
+                              here too.
 
 app/utils/id.ts             ← generateId() — crypto.randomUUID() when available, otherwise a
                               crypto.getRandomValues()-based UUID v4 fallback. Needed because randomUUID() only
@@ -85,7 +100,7 @@ app/utils/date.ts          ← formatDate/parseDate ('YYYY-MM-DD' string <-> Dat
 app/utils/format.ts        ← isBodyweight(weight) — the "kg"/"BW" text itself comes from translations, not from this util
 app/utils/pluralize.ts     ← pluralize(count, {one, few, many}) — Russian has 3 plural forms, not 2; see i18n below
 
-app/stores/workout.ts      ← THE store. workouts: Workout[] persisted via useStorage('lift-tracker-workouts').
+app/stores/workout.ts      ← THE store. workouts: Workout[] persisted via useIdbStorage('lift-tracker-workouts').
                               One Workout per date (getOrCreateWorkoutByDate enforces this). CRUD: addExercise
                               (always creates a new WorkoutExercise, even if that exerciseId is already logged
                               that day — intentional, e.g. same exercise at the start and end of a session),
@@ -140,7 +155,7 @@ app/stores/settings.ts     ← persisted user preferences: primaryColor, restTim
                               state) — the 7 selectable accent-color options, `{value, labelKey}[]` — and
                               restTimerSounds (same pattern): a plain `{id, labelKey}[]` catalog, `id` doubles
                               as the mp3 basename under `public/sounds/` so no separate `file` field is needed.
-app/stores/catalog.ts      ← user-created catalog additions, persisted separately from the static seed data:
+app/stores/catalog.ts      ← user-created catalog additions, persisted (IndexedDB, useIdbStorage — all 5 keys below) separately from the static seed data:
                               customMuscleGroups ('lift-tracker-custom-muscle-groups'), customExercises
                               ('lift-tracker-custom-exercises'). addMuscleGroup(name) pushes (new custom groups
                               sort after the built-in ones); addExercise(name, muscleGroupId, equipment,

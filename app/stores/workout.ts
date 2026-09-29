@@ -1,8 +1,8 @@
 import { computed } from 'vue';
 import { defineStore } from 'pinia';
-import { useStorage } from '@vueuse/core';
 import type { Workout, WorkoutExercise, SetEntry } from '~~/types';
 import { generateId } from '@/utils/id';
+import { useIdbStorage } from '@/utils/idbStorage';
 
 export interface ExerciseHistoryEntry {
   workoutId: string;
@@ -14,7 +14,12 @@ export interface ExerciseHistoryEntry {
 }
 
 export const useWorkoutStore = defineStore('workout', () => {
-  const workouts = useStorage<Workout[]>('lift-tracker-workouts', []);
+  // IndexedDB, not localStorage — this is the collection that grows without bound (years
+  // of history). Loaded before the app mounts, see app/plugins/idb-load.client.ts.
+  const { state: workouts, load } = useIdbStorage<Workout[]>(
+    'lift-tracker-workouts',
+    [],
+  );
 
   function getWorkoutByDate(date: string): Workout | undefined {
     return workouts.value.find((workout) => workout.date === date);
@@ -146,10 +151,6 @@ export const useWorkoutStore = defineStore('workout', () => {
     }
   }
 
-  // Upsert by id, LWW-guarded by updatedAt — used by syncApi.ts to apply both a push's
-  // `rejected[].current` (server's authoritative version) and a pull's incoming workouts.
-  // Not exposed to components; sync is the only caller, same as guest/auth domains staying
-  // out of this store's own mutation surface.
   function replaceWorkout(incoming: Workout): void {
     const index = workouts.value.findIndex((w) => w.id === incoming.id);
     const existing = index === -1 ? undefined : workouts.value[index];
@@ -219,6 +220,7 @@ export const useWorkoutStore = defineStore('workout', () => {
 
   return {
     workouts,
+    load,
     getWorkoutByDate,
     getOrCreateWorkoutByDate,
     addExercise,

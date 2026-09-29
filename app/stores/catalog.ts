@@ -1,5 +1,4 @@
 import { defineStore } from 'pinia';
-import { useStorage } from '@vueuse/core';
 import type {
   MuscleGroup,
   Exercise,
@@ -7,27 +6,34 @@ import type {
   TrackingType,
 } from '~~/types';
 import { generateId } from '@/utils/id';
+import { useIdbStorage } from '@/utils/idbStorage';
 
 export const useCatalogStore = defineStore('catalog', () => {
-  const customMuscleGroups = useStorage<MuscleGroup[]>(
-    'lift-tracker-custom-muscle-groups',
+  const { state: customMuscleGroups, load: loadMuscleGroups } = useIdbStorage<
+    MuscleGroup[]
+  >('lift-tracker-custom-muscle-groups', []);
+  const { state: customExercises, load: loadExercises } = useIdbStorage<
+    Exercise[]
+  >('lift-tracker-custom-exercises', []);
+  const { state: groupOrder, load: loadGroupOrder } = useIdbStorage<string[]>(
+    'lift-tracker-group-order',
     [],
   );
-  const customExercises = useStorage<Exercise[]>(
-    'lift-tracker-custom-exercises',
-    [],
-  );
-  const groupOrder = useStorage<string[]>('lift-tracker-group-order', []);
-  const exerciseOrder = useStorage<Record<string, string[]>>(
-    'lift-tracker-exercise-order',
-    {},
-  );
-  // Companion timestamp for groupOrder+exerciseOrder together — the backend stores them as
-  // one `catalog_order` row per user, so both reorder actions bump this single field.
-  const catalogOrderUpdatedAt = useStorage<string>(
-    'lift-tracker-catalog-order-updated-at',
-    '',
-  );
+  const { state: exerciseOrder, load: loadExerciseOrder } = useIdbStorage<
+    Record<string, string[]>
+  >('lift-tracker-exercise-order', {});
+  const { state: catalogOrderUpdatedAt, load: loadCatalogOrderUpdatedAt } =
+    useIdbStorage<string>('lift-tracker-catalog-order-updated-at', '');
+
+  async function load(): Promise<void> {
+    await Promise.all([
+      loadMuscleGroups(),
+      loadExercises(),
+      loadGroupOrder(),
+      loadExerciseOrder(),
+      loadCatalogOrderUpdatedAt(),
+    ]);
+  }
 
   function addMuscleGroup(name: string): MuscleGroup {
     const group: MuscleGroup = {
@@ -116,11 +122,10 @@ export const useCatalogStore = defineStore('catalog', () => {
     catalogOrderUpdatedAt.value = new Date().toISOString();
   }
 
-  // Upsert by id, LWW-guarded by updatedAt — same reasoning and same sync-only caller as
-  // workoutStore.replaceWorkout(). Missing updatedAt (pre-dates the field) sorts as always
-  // older, so a synced version always wins over a never-touched local one.
   function replaceMuscleGroup(incoming: MuscleGroup): void {
-    const index = customMuscleGroups.value.findIndex((g) => g.id === incoming.id);
+    const index = customMuscleGroups.value.findIndex(
+      (g) => g.id === incoming.id,
+    );
     const existing = index === -1 ? undefined : customMuscleGroups.value[index];
     if (!existing) {
       customMuscleGroups.value.push(incoming);
@@ -143,10 +148,6 @@ export const useCatalogStore = defineStore('catalog', () => {
     }
   }
 
-  // Unconditional set, no LWW guard — unlike the two above, groupOrder/exerciseOrder are
-  // called with the server's version only after it's already established as authoritative
-  // (either a push rejection's `current`, or a pull result), so there's nothing left to
-  // compare against locally by the time this runs.
   function setCatalogOrder(order: {
     groupOrder: string[];
     exerciseOrder: Record<string, string[]>;
@@ -163,6 +164,7 @@ export const useCatalogStore = defineStore('catalog', () => {
     groupOrder,
     exerciseOrder,
     catalogOrderUpdatedAt,
+    load,
     addMuscleGroup,
     addExercise,
     updateMuscleGroup,

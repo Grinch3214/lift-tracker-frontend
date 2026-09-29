@@ -15,6 +15,7 @@
     "@vant/nuxt": "^1.0.7",
     "@vueuse/integrations": "^14.4.0",
     "@vueuse/nuxt": "^14.4.0",
+    "idb-keyval": "^6.3.0",
     "nuxt": "^4.5.1",
     "pinia": "^4.0.2",
     "sortablejs": "^1.15.7",
