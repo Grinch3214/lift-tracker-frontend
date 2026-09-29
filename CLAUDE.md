@@ -104,7 +104,7 @@ app/stores/workout.ts      ← THE store. workouts: Workout[] persisted via useS
 app/stores/ui.ts           ← UI-only state, not persisted: selectedDate (drives which day is shown on Workout page),
                               addSetSheet (add/edit-set popup state — the name is historical, it's rendered
                               as a centered popup now, not a bottom sheet), exercisePicker (show flag),
-                              authModal ({show, initialMode: 'register'|'login'} — GuestAuthModal.vue is a
+                              authModal ({show, initialMode: 'register'|'login'} — GuestAuthModal (guest/AuthModal.vue) is a
                               global popup like WorkoutExercisePicker/WorkoutAddSetSheet, not a locally-`ref`'d
                               one like TheSidebar itself, because it now has 3 independent openers:
                               GuestLimitGate's banner, TheSidebar's login menu item, GuestRemainingNudge's
@@ -114,7 +114,7 @@ app/stores/ui.ts           ← UI-only state, not persisted: selectedDate (drive
                               module-scope `setTimeout` handle (`guestNudgeTimeout`, same "runtime handle, not
                               a ref" category as `timerInterval` below) that auto-hides it after 4.5s — only
                               caller is AddSetSheet.vue#confirm(), at the milestones in
-                              `GUEST_NUDGE_MILESTONES`, see guest.ts above),
+                              `GUEST_NUDGE_MILESTONES`, see guest.ts below),
                               restTimer ({active, remaining, total}, countdown driven by a module-scope
                               setInterval shared across the store singleton's lifetime — not persisted, resets
                               on page reload). startRestTimer(seconds)/stopRestTimer() (unconditional start/stop),
@@ -165,8 +165,8 @@ app/stores/catalog.ts      ← user-created catalog additions, persisted separat
                               version). All three exist solely for syncApi.ts, see below — not meant for any
                               other caller.
 app/stores/guest.ts        ← guestWorkoutCount ('lift-tracker-guest-workout-count'), the free-tier counter
-                              backing the registration gate (docs/02-mvp.md, v1.3; UI: GuestLimitGate.vue
-                              below). Monotonic — only incrementWorkoutCount() (++) exists, no decrement, so
+                              backing the registration gate (docs/02-mvp.md, v1.3; UI: GuestLimitGate —
+                              guest/LimitGate.vue, see the component tree below). Monotonic — only incrementWorkoutCount() (++) exists, no decrement, so
                               deleting/recreating a workout can't be used to dodge the limit. Deliberately NOT
                               counted by raw Workout/localStorage record count (a day gets a Workout row just
                               by being opened, via getOrCreateWorkoutByDate, even with zero sets logged) —
@@ -200,7 +200,7 @@ app/stores/auth.ts         ← userEmail ('lift-tracker-user-email'), userId ('l
                               — its wire `id` is the user's own id (one row per user server-side), not a
                               client-minted UUID like every other synced entity, see syncApi.ts below.
                               setSession()/clearSession() are the only mutations — pure state, no HTTP calls
-                              (same "keep the domain out of unrelated concerns" reasoning as guest.ts below);
+                              (same "keep the domain out of unrelated concerns" reasoning as guest.ts above);
                               the actual `/auth/*` requests live in app/utils/authApi.ts instead
                               (registerUser/loginUser/logoutUser), which is also where GuestAuthModal's
                               submit() and TheSidebar's logout button call into — a plain utils module rather
@@ -322,7 +322,7 @@ app/layouts/default.vue           ← van-config-provider(dark) + TheHeader + <s
                                         opening `GuestAuthModal` in login mode; authenticated → a static row
                                         instead (truncated email start-aligned via `text-overflow: ellipsis`
                                         + `min-width: 0` on a `flex:1` span, "Выйти" button end-aligned calling
-                                        `authStore.logout()`) — not a menu item, doesn't navigate anywhere
+                                        `authApi.ts#logoutUser()`) — not a menu item, doesn't navigate anywhere
   app/components/the/TheRestTimerSettingsModal.vue ← centered van-popup, mounted inside TheSidebar.vue with
                                         a local `ref`-based show state (same reasoning as TheSidebar itself —
                                         nothing else opens it): 3-way mode selector + conditional duration
@@ -453,7 +453,7 @@ English + Russian via `@nuxtjs/i18n`. This is a permanent architecture decision,
 - **Pluralization is hand-rolled, not vue-i18n's built-in plural syntax.** Russian has 3 plural forms (1 / 2-4 / 5+), not the 2 vue-i18n's default English-style plural rule assumes. Pattern: locale files have `xWordOne`/`xWordFew`/`xWordMany` string keys, `app/utils/pluralize.ts#pluralize(count, {one, few, many})` picks the right one, then interpolate into `units.countWord` (`"{count} {word}"`). See `app/pages/index.vue`'s `summaryText` for the canonical example.
 - **Don't use `tm()` for plain string arrays** — in this Nuxt/vue-i18n setup `tm()` returns compiled message AST nodes, not evaluated strings (you'd need `rt()` to render them). That's why plural forms are separate string keys resolved via plain `t()`, not a `tm()`-fetched array — simpler and avoids that footgun entirely.
 - **`useI18n()` cannot be called inside a `defineNuxtPlugin()` callback in this setup.** Global i18n-dependent logic (e.g. the Vant locale sync) belongs in `app/app.vue`'s `<script setup>` instead, which has a guaranteed valid Vue composition context.
-- Catalog display names are never read from `app/data/muscle-groups.ts#name` — always resolve via `t(\`catalog.exercises.${id}\`)` / `t(\`catalog.muscleGroups.${id}\`)`. The `name` field there is an English fallback for dev/debug convenience only.
+- Catalog display names are never read directly from `app/data/muscle-groups.ts#name` (that field is an English fallback for dev/debug convenience only) — always resolve via `exerciseName(exercise, t)` / `muscleGroupName(group, t)` from `app/utils/exercises.ts`, which translate built-in entries via `catalog.exercises.<id>` / `catalog.muscleGroups.<id>` and return the raw `name` for custom ones. Don't call those `t()` keys directly — see the custom-entries note above.
 - **A literal `|` inside a message string is vue-i18n's plural-form separator, even via plain `t()` with no explicit plural syntax intended.** If the params include a `count` key, vue-i18n uses it to pick which side of the `|` to render — silently mangling any string where `|` was meant as a literal visual separator (e.g. an attempted `"Добавить | {count}"` key rendered as just `"Добавить"` or just the bare count depending on its value). Build that kind of "label | number" string by concatenating in the template/script instead of putting `|` in the locale JSON.
 
 ## MVP scope
