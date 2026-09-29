@@ -5,17 +5,12 @@ export interface Exercise {
   id: string;
   muscleGroupId: string; // links to MuscleGroup.id
   name: string;
-  isCustom: boolean; // true if added by the user, false for the built-in catalog
+  isCustom: boolean;
   equipment?: EquipmentType;
   trackingType: TrackingType;
-  order?: number; // display order within the muscle group
-  // Exercise image (.webp). Built-in catalog only — '' until the image exists; custom
-  // exercises never set it.
+  order?: number;
   mediaUrl?: string;
-  // Soft-delete: hidden from the picker but still resolvable by id, so past workouts
-  // that logged this exercise keep displaying correctly. Custom exercises only.
+  mediaId?: string;
   isDeleted?: boolean;
-  // ISO timestamp, bumped on every mutation. Custom exercises only — required for cloud-sync
-  // LWW (see lift-tracker-backend's WireCustomExercise); built-in entries never set this.
   updatedAt?: string;
 }

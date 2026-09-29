@@ -62,6 +62,23 @@ app/utils/idbStorage.ts     ← useIdbStorage(key, initial) → {state, load} �
                               — reactive Proxies fail structured clone with DataCloneError) is registered only
                               after that. No migration from the old localStorage keys and no localStorage
                               fallback — the app had no production users when this landed.
+app/utils/imageCompress.ts  ← compressImage(file) — user photo → square webp Blob: createImageBitmap (decode, EXIF
+                              rotation) → canvas center-crop + downscale to 512px → canvas.toBlob('image/webp',
+                              0.8) (the actual compression; ~20–60KB from a multi-MB camera photo). Falls back
+                              to JPEG when the browser silently can't encode webp (older Safari returns PNG).
+                              Re-encoding drops all EXIF, GPS included.
+app/utils/mediaStorage.ts   ← saveMedia/deleteMedia/getMediaUrl — user-uploaded images as raw Blobs keyed by
+                              mediaId, in a *separate* IndexedDB database ('lift-tracker-media' — idb-keyval's
+                              createStore owns one store per db; and idbStorage.ts's JSON round-trip can't hold
+                              Blobs anyway). getMediaUrl caches one object URL per mediaId per page load. A
+                              mediaId's image never changes: replacing a photo = new mediaId + deleting the old
+                              one (done in AddExerciseModal.vue#confirm, which also only writes to IndexedDB on
+                              confirm — cancelling leaves nothing behind). Synced via the backend's `/media`
+                              (see lift-tracker-backend API.md): upload is syncApi.ts#uploadMedia(); download is
+                              here — getMediaUrl() falls back to the public `GET /media/:id` (plain $fetch, no
+                              auth) when there's no local Blob, then keeps it in IndexedDB for offline use;
+                              concurrent lookups of one id share a single download. null (→ placeholder) when
+                              it's neither local nor downloadable (offline / not uploaded yet).
 app/plugins/idb-load.client.ts ← awaits workoutStore.load() + catalogStore.load() before the app mounts (Nuxt
                               awaits async plugins). Load-bearing: without it components and app.vue's
                               `{immediate: true}` sync triggers would see still-empty stores — the first sync
@@ -298,6 +315,17 @@ app/utils/syncApi.ts       ← the client half of the flow in lift-tracker-backe
                               two-way mapper (toWireMuscleGroup/toWireExercise dropping `isCustom` — the
                               backend only ever deals in custom entries, defaulting missing isDeleted/
                               updatedAt; fromWireMuscleGroup/fromWireExercise adding `isCustom: true` back).
+                              Exercise photos: `mediaId` travels in the exercise's wire form; the image itself
+                              is uploaded by uploadMedia() (`PUT /media/:id`, multipart field `file` — apiFetch
+                              accepts FormData + PUT for this) for every changed exercise *before* the push, so
+                              another device never pulls a mediaId the server can't serve. No separate upload
+                              queue: adding/replacing a photo bumps the exercise's updatedAt, so it's in the
+                              changed set exactly when its photo is new (PUT is idempotent, a re-upload on a
+                              later rename is harmless). Network/5xx → the whole sync aborts and retries on the
+                              next trigger (pushing anyway would advance lastSyncedAt past it and the photo
+                              would never upload); 4xx → skipped, a retry can't fix it. A missing `mediaId` in
+                              pulled data means "no photo" (removed on another device) — replaceExercise()
+                              applies it as-is. Old images are never deleted server-side yet.
                               applyRejected() resolves a flat, mixed-domain id (see API.md's "accepted/
                               rejected — общий пул id из всех доменов разом") back to the right local
                               collection by checking authStore.userId first (→ catalogOrder), then searching
@@ -417,8 +445,14 @@ app/layouts/default.vue           ← van-config-provider(dark) + TheHeader + <s
                                              `exercise.mediaUrl` is set (no drag-handle icon — the whole card is
                                              the drag target). WorkoutExerciseMedia (workout/ExerciseMedia.vue) is
                                              the shared thumbnail tile, also used in ExercisePicker's exercise
-                                             rows; images live in `public/exercise-media/<exercise-id>.webp`
-                                             (animated, white background → rendered on a white tile).
+                                             rows — takes the whole `exercise` and is the one place that resolves
+                                             an image: built-in `mediaUrl` (static
+                                             `public/exercise-media/<exercise-id>.webp`, animated, white
+                                             background → contained on a white tile) or custom `mediaId` (user
+                                             photo from mediaStorage.ts → object URL, `object-fit: cover`). Two
+                                             fields, not one, because `mediaUrl` is a ready-to-use src while
+                                             `mediaId` is a key needing an async lookup — never put either into
+                                             an <img> yourself, use this component / `hasExerciseMedia()`.
     WorkoutEmptyState                   ← shown when the selected day has no exercises yet
 
   app/pages/history.vue ("/history") ← all workouts, sorted newest-first
@@ -448,7 +482,7 @@ Global popups (`WorkoutExercisePicker`, `WorkoutAddSetSheet`, `GuestAuthModal`) 
 
 **Deleting a custom exercise/group is a soft-delete (`isDeleted: true`), never a real array removal — built-in (non-custom) entries can't be edited or deleted at all, by design.** Workouts reference exercises by id only; hard-deleting a custom entry a user logged sets ago would silently break every past `ExerciseCard`/history render for it (`getExerciseById` would return `undefined`). `getAllMuscleGroups`/`getExercisesByMuscleGroup` (picker-facing) filter out `isDeleted` entries; `getExerciseById`/`getMuscleGroupById` (used to resolve an *existing* reference) deliberately don't, so old workouts keep resolving and rendering forever. Editing (rename/change equipment/trackingType) is a plain in-place mutation, not soft-anything — a correction is *meant* to retroactively show up in past history too. In `ExercisePicker.vue`, both are reached by swiping a custom cell (`van-swipe-cell`, `:disabled="!entry.isCustom"` so built-in cells don't swipe at all) to reveal Edit/Delete buttons.
 
-**Drag-and-drop reordering in `ExercisePicker.vue` (both the muscle-group list and the exercise-list-within-a-group) covers built-in AND custom entries together — unlike edit/delete, which is custom-only.** Reordering doesn't mutate the entries themselves, just their display position, so there's no reason to lock built-in ones out of it (a user might reasonably want "Ноги" before "Грудь", or a frequently-used exercise dragged to the top). The catch: built-in entries live in the unpersisted static `app/data/muscle-groups.ts` module, so there's nowhere on the `Exercise`/`MuscleGroup` objects themselves to durably store a custom position for them. Order is instead tracked out-of-band in `catalogStore.groupOrder` / `exerciseOrder` — plain arrays of ids, applied on top of the natural (catalog + custom) list via `app/utils/exercises.ts#applyOrder()`. Anything not yet in the stored order (new, or never reordered) is appended at the end in natural order rather than disappearing. Same drag mechanics as everywhere else (press-and-hold via `useSortable`, `watchElement: true` since both lists sit behind `v-if`/`v-else` and get destroyed/recreated on navigation, local working-copy ref with the id-set-comparison guard to avoid ping-ponging with the persist watcher) — this coexists with each cell's `van-swipe-cell` (edit/delete) without conflict, verified via Playwright.
+**Drag-and-drop reordering in `ExercisePicker.vue` (both the muscle-group list and the exercise-list-within-a-group) covers built-in AND custom entries together — unlike edit/delete, which is custom-only.** Reordering doesn't mutate the entries themselves, just their display position, so there's no reason to lock built-in ones out of it (a user might reasonably want "Ноги" before "Грудь", or a frequently-used exercise dragged to the top). The catch: built-in entries live in the unpersisted static `app/data/muscle-groups.ts` module, so there's nowhere on the `Exercise`/`MuscleGroup` objects themselves to durably store a custom position for them. Order is instead tracked out-of-band in `catalogStore.groupOrder` / `exerciseOrder` — plain arrays of ids, applied on top of the natural (catalog + custom) list via `app/utils/exercises.ts#applyOrder()`. Anything not yet in the stored order (new, or never reordered) is appended at the end in natural order rather than disappearing — except custom *exercises*: `getExercisesByMuscleGroup()` puts custom exercises missing from the stored order on top, since the picker persists an order as soon as a group is opened and a freshly created exercise would otherwise land at the very bottom (the picker then persists the new order, so it stays on top). Same drag mechanics as everywhere else (press-and-hold via `useSortable`, `watchElement: true` since both lists sit behind `v-if`/`v-else` and get destroyed/recreated on navigation, local working-copy ref with the id-set-comparison guard to avoid ping-ponging with the persist watcher) — this coexists with each cell's `van-swipe-cell` (edit/delete) without conflict, verified via Playwright.
 
 **There is no per-exercise history view.** It existed briefly (tap the exercise card's title on the Workout page) but was removed — it wasn't discoverable (the click target wasn't obvious as interactive) and it also fought with drag-reorder: long-pressing text to start a drag would trigger the browser's native text-selection instead. The `/history` tab covers this need at the day level. Don't reintroduce a click handler on `.exercise-card__name`/`ExerciseCard.vue`'s title without solving both problems again.
 

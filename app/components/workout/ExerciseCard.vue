@@ -3,8 +3,8 @@
     <div class="exercise-card__header">
       <div class="exercise-card__title-row">
         <WorkoutExerciseMedia
-          v-if="exercise.mediaUrl"
-          :src="exercise.mediaUrl"
+          v-if="hasExerciseMedia(exercise)"
+          :exercise="exercise"
         />
         <span class="exercise-card__name">
           {{ exerciseName(exercise, t) }}
@@ -111,7 +111,11 @@ import type { PopoverAction } from 'vant';
 import type { Exercise, WorkoutExercise, SetEntry } from '~~/types';
 import { useWorkoutStore } from '@/stores/workout';
 import { isBodyweight } from '@/utils/format';
-import { exerciseName, equipmentLabel } from '@/utils/exercises';
+import {
+  exerciseName,
+  equipmentLabel,
+  hasExerciseMedia,
+} from '@/utils/exercises';
 
 const props = defineProps<{
   exercise: Exercise;

@@ -284,6 +284,7 @@
 ### Added
 
 - Supersets: an exercise card's new "⋯" menu can link it with the next exercise (repeatable, to build 3+ exercise supersets) or break the superset; a superset is shown and drag-reordered as one block. Synced with the backend (`supersetId`).
+- Custom exercises can have a photo: picked in the add/edit exercise modal, compressed in the browser to a small square webp, stored in IndexedDB and synced through the backend's `/media` (uploaded with the exercise's push, downloaded on other devices when first shown).
 
 ### Fixed
 

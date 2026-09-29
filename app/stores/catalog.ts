@@ -52,6 +52,7 @@ export const useCatalogStore = defineStore('catalog', () => {
     muscleGroupId: string,
     equipment: EquipmentType | undefined,
     trackingType: TrackingType,
+    mediaId?: string,
   ): Exercise {
     const exercise: Exercise = {
       id: generateId(),
@@ -60,6 +61,7 @@ export const useCatalogStore = defineStore('catalog', () => {
       isCustom: true,
       equipment,
       trackingType,
+      mediaId,
       updatedAt: new Date().toISOString(),
     };
     customExercises.value.unshift(exercise);
@@ -94,6 +96,7 @@ export const useCatalogStore = defineStore('catalog', () => {
       name: string;
       equipment: EquipmentType | undefined;
       trackingType: TrackingType;
+      mediaId: string | undefined;
     },
   ): void {
     const exercise = findExercise(id);

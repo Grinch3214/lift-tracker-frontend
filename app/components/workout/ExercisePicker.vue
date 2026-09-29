@@ -81,7 +81,7 @@
             >
               <template v-if="listHasMedia" #icon>
                 <WorkoutExerciseMedia
-                  :src="exercise.mediaUrl"
+                  :exercise="exercise"
                   class="exercise-picker__media"
                 />
               </template>
@@ -145,6 +145,7 @@ import {
   getExercisesByMuscleGroup,
   exerciseName,
   equipmentLabel,
+  hasExerciseMedia,
   muscleGroupName,
 } from '@/utils/exercises';
 import { formatDate } from '@/utils/date';
@@ -161,10 +162,6 @@ const showAddGroupModal = ref(false);
 const showAddExerciseModal = ref(false);
 const editingGroup = ref<MuscleGroup | null>(null);
 const editingExercise = ref<Exercise | null>(null);
-
-// Local working copies useSortable can freely reorder while dragging - same "id-set
-// comparison to avoid ping-ponging with the persist watcher" pattern as index.vue's
-// drag-and-drop for the day's exercise list, see CLAUDE.md for why.
 const storedMuscleGroups = computed(() => getAllMuscleGroups());
 const groupItems = ref<MuscleGroup[]>([]);
 watch(
@@ -231,12 +228,7 @@ watch(exerciseItems, (val) => {
   );
 });
 
-// Reserve the thumbnail slot for every row (empty placeholder when an exercise has no
-// image, e.g. a custom one) only if at least one exercise in the list has media — keeps
-// titles aligned within a list, without an empty column in groups that have no images yet.
-const listHasMedia = computed(() =>
-  exerciseItems.value.some((exercise) => !!exercise.mediaUrl),
-);
+const listHasMedia = computed(() => exerciseItems.value.some(hasExerciseMedia));
 
 const headerTitle = computed(() =>
   selectedGroup.value
@@ -407,7 +399,6 @@ function confirmSelection() {
     }
   }
 
-  // Three-line rows keep the thumbnail vertically centered (the cell's `center` prop).
   &__media {
     margin-inline-end: 12px;
   }

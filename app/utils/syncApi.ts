@@ -5,7 +5,8 @@ import type {
   TrackingType,
   EquipmentType,
 } from '~~/types';
-import { apiFetch } from '@/utils/api';
+import { apiFetch, ApiError } from '@/utils/api';
+import { getMediaBlob } from '@/utils/mediaStorage';
 import { useAuthStore } from '@/stores/auth';
 import { useWorkoutStore } from '@/stores/workout';
 import { useCatalogStore } from '@/stores/catalog';
@@ -26,6 +27,7 @@ interface WireCustomExercise {
   equipment?: EquipmentType;
   trackingType: TrackingType;
   order?: number;
+  mediaId?: string; // just the id — the image itself goes through PUT /media/:id
   isDeleted: boolean;
   updatedAt: string;
 }
@@ -70,9 +72,33 @@ function toWireExercise(exercise: Exercise): WireCustomExercise {
     equipment: exercise.equipment,
     trackingType: exercise.trackingType,
     order: exercise.order,
+    mediaId: exercise.mediaId,
     isDeleted: exercise.isDeleted ?? false,
     updatedAt: exercise.updatedAt ?? NEVER,
   };
+}
+
+async function uploadMedia(exercises: Exercise[]): Promise<void> {
+  for (const exercise of exercises) {
+    if (!exercise.mediaId) continue;
+    const blob = await getMediaBlob(exercise.mediaId);
+    if (!blob) continue; // not on this device (arrived via sync) — nothing to upload
+
+    const form = new FormData();
+    form.append('file', blob, `${exercise.mediaId}.webp`);
+    try {
+      await apiFetch(`/media/${exercise.mediaId}`, {
+        method: 'PUT',
+        body: form,
+        auth: true,
+      });
+    } catch (err) {
+      if (err instanceof ApiError && err.status >= 400 && err.status < 500) {
+        continue;
+      }
+      throw err;
+    }
+  }
 }
 
 function fromWireMuscleGroup(wire: WireCustomMuscleGroup): MuscleGroup {
@@ -131,6 +157,7 @@ async function pushLocalData(): Promise<void> {
   const changedExercises = catalogStore.customExercises.filter((e) =>
     isNewerThan(e.updatedAt ?? NEVER, cutoff),
   );
+  await uploadMedia(changedExercises);
 
   const body: Record<string, unknown> = {};
   if (cutoff) body.lastSyncedAt = cutoff;
