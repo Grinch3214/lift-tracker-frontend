@@ -75,15 +75,24 @@
             <van-cell
               class="exercise-picker__exercise-cell"
               :class="{ 'is-selected': selectedIds.has(exercise.id) }"
-              :title="exerciseName(exercise, t)"
-              :label="
-                exercise.equipment
-                  ? t(`units.equipment.${exercise.equipment}`)
-                  : ''
-              "
               clickable
+              center
               @click="toggleExercise(exercise)"
-            />
+            >
+              <template v-if="listHasMedia" #icon>
+                <WorkoutExerciseMedia
+                  :src="exercise.mediaUrl"
+                  class="exercise-picker__media"
+                />
+              </template>
+              <template #title>
+                {{ exerciseName(exercise, t) }}
+                <template v-if="exercise.equipment">
+                  <span class="dot">·</span>
+                  {{ equipmentLabel(exercise, t) }}
+                </template>
+              </template>
+            </van-cell>
             <template #right>
               <van-button
                 square
@@ -135,6 +144,7 @@ import {
   getAllMuscleGroups,
   getExercisesByMuscleGroup,
   exerciseName,
+  equipmentLabel,
   muscleGroupName,
 } from '@/utils/exercises';
 import { formatDate } from '@/utils/date';
@@ -220,6 +230,13 @@ watch(exerciseItems, (val) => {
     val.map((e) => e.id),
   );
 });
+
+// Reserve the thumbnail slot for every row (empty placeholder when an exercise has no
+// image, e.g. a custom one) only if at least one exercise in the list has media — keeps
+// titles aligned within a list, without an empty column in groups that have no images yet.
+const listHasMedia = computed(() =>
+  exerciseItems.value.some((exercise) => !!exercise.mediaUrl),
+);
 
 const headerTitle = computed(() =>
   selectedGroup.value
@@ -388,6 +405,11 @@ function confirmSelection() {
     :deep(.van-cell__title) {
       user-select: none;
     }
+  }
+
+  // Three-line rows keep the thumbnail vertically centered (the cell's `center` prop).
+  &__media {
+    margin-inline-end: 12px;
   }
 
   &__footer {

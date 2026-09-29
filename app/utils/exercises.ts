@@ -63,6 +63,13 @@ export function exerciseName(
     : t(`catalog.exercises.${exercise.id}`);
 }
 
+export function equipmentLabel(
+  exercise: Exercise,
+  t: (key: string) => string,
+): string {
+  return exercise.equipment ? t(`units.equipment.${exercise.equipment}`) : '';
+}
+
 export function muscleGroupName(
   group: MuscleGroup,
   t: (key: string) => string,

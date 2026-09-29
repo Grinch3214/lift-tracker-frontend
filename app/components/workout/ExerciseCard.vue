@@ -2,19 +2,19 @@
   <div class="exercise-card">
     <div class="exercise-card__header">
       <div class="exercise-card__title-row">
-        <van-icon name="bars" size="16" color="#888" class="exercise-card__drag-handle" />
-        <div class="exercise-card__meta">
-          <span class="exercise-card__name">{{
-            exerciseName(exercise, t)
-          }}</span>
-          <van-tag
-            v-if="exercise.equipment"
-            plain
-            class="exercise-card__equipment-tag"
-          >
-            {{ t(`units.equipment.${exercise.equipment}`) }}
-          </van-tag>
-        </div>
+        <WorkoutExerciseMedia
+          v-if="exercise.mediaUrl"
+          :src="exercise.mediaUrl"
+        />
+        <span class="exercise-card__name">
+          {{ exerciseName(exercise, t) }}
+          <template v-if="exercise.equipment">
+            <span class="dot">· </span>
+            <span class="exercise-card__equipment">{{
+              equipmentLabel(exercise, t)
+            }}</span>
+          </template>
+        </span>
       </div>
       <van-icon
         name="delete-o"
@@ -99,7 +99,7 @@
 import type { Exercise, WorkoutExercise, SetEntry } from '~~/types';
 import { useWorkoutStore } from '@/stores/workout';
 import { isBodyweight } from '@/utils/format';
-import { exerciseName } from '@/utils/exercises';
+import { exerciseName, equipmentLabel } from '@/utils/exercises';
 
 const props = defineProps<{
   exercise: Exercise;
@@ -127,7 +127,6 @@ const prWeight = computed(() => {
   return Math.max(...history.map((h) => h.maxWeight));
 });
 
-// If several sets tie the record weight, only the most recent one gets the badge.
 const prSetId = computed(() => {
   if (prWeight.value <= 0) return null;
   const qualifying = props.workoutExercise.sets.filter(
@@ -153,26 +152,15 @@ function isPR(set: SetEntry): boolean {
 
   &__header {
     display: flex;
-    align-items: center;
     justify-content: space-between;
     padding: 14px 14px 10px;
   }
 
   &__title-row {
     display: flex;
-    align-items: center;
-    gap: 8px;
+    align-items: flex-start;
+    gap: 12px;
     min-width: 0;
-  }
-
-  &__drag-handle {
-    flex-shrink: 0;
-  }
-
-  &__meta {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
   }
 
   &__name {
@@ -182,16 +170,13 @@ function isPR(set: SetEntry): boolean {
     user-select: none;
   }
 
-  &__equipment-tag {
-    align-self: flex-start;
-    border-color: var(--van-primary-color);
-    color: var(--van-primary-color);
-    font-size: 10px;
-    user-select: none;
+  &__equipment {
+    font-weight: 400;
+    opacity: 0.6;
   }
 
   &__delete-btn {
-    padding: 6px;
+    padding: 0 6px 6px;
   }
 
   &__sets-header {

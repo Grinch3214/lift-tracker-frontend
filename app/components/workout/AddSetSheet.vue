@@ -6,9 +6,13 @@
           ? t('addSetSheet.editTitle')
           : t('addSetSheet.addTitle')
       }}</span>
-      <span class="add-set-sheet__exercise-name">{{
-        exerciseDisplayName
-      }}</span>
+      <span class="add-set-sheet__exercise-name">
+        {{ exerciseDisplayName }}
+        <template v-if="exerciseEquipment">
+          <span class="dot">·</span>
+          {{ exerciseEquipment }}
+        </template>
+      </span>
     </div>
 
     <div v-if="prevSession" class="add-set-sheet__prev-info">
@@ -133,7 +137,11 @@ import {
 } from '@/stores/guest';
 import { useAuthStore } from '@/stores/auth';
 import { isBodyweight } from '@/utils/format';
-import { getExerciseById, exerciseName } from '@/utils/exercises';
+import {
+  getExerciseById,
+  exerciseName,
+  equipmentLabel,
+} from '@/utils/exercises';
 
 const { t } = useI18n();
 const uiStore = useUiStore();
@@ -165,6 +173,10 @@ const isDumbbell = computed(() => exercise.value?.equipment === 'dumbbell');
 
 const exerciseDisplayName = computed(() =>
   exercise.value ? exerciseName(exercise.value, t) : '',
+);
+
+const exerciseEquipment = computed(() =>
+  exercise.value ? equipmentLabel(exercise.value, t) : '',
 );
 
 const prevSession = computed(() => {
