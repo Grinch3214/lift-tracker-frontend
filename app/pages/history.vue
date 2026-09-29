@@ -20,7 +20,9 @@ const { t } = useI18n();
 const workoutStore = useWorkoutStore();
 
 const sortedWorkouts = computed(() =>
-  [...workoutStore.workouts].sort((a, b) => b.date.localeCompare(a.date)),
+  [...workoutStore.nonEmptyWorkouts].sort((a, b) =>
+    b.date.localeCompare(a.date),
+  ),
 );
 </script>
 

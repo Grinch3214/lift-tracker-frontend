@@ -104,7 +104,9 @@ app/stores/workout.ts      ← THE store. workouts: Workout[] persisted via useI
                               One Workout per date (getOrCreateWorkoutByDate enforces this). CRUD: addExercise
                               (always creates a new WorkoutExercise, even if that exerciseId is already logged
                               that day — intentional, e.g. same exercise at the start and end of a session),
-                              removeExercise, reorderExercises(date, orderedIds) (persists drag-and-drop order,
+                              removeExercise (also clears supersetId from a superset's last remaining member),
+                              linkWithNext(date, id) / unlinkSuperset(date, id) (supersets — see the note
+                              below), reorderExercises(date, orderedIds) (persists drag-and-drop order,
                               re-syncs WorkoutExercise.order to match), addSet(date, workoutExerciseId, values),
                               updateSet(date, workoutExerciseId, setId, values) — values is a partial
                               {weight?, reps?, durationSeconds?, distanceKm?, dumbbellCount?}, not positional
@@ -114,8 +116,18 @@ app/stores/workout.ts      ← THE store. workouts: Workout[] persisted via useI
                               for that exerciseId, not just the first match — matters now that duplicates
                               exist; treats missing weight/reps as 0 rather than assuming every set has them)
                               and getPersonalRecord(exerciseId) — used for the PR badge and the "last session"
-                              hint in the add-set popup. replaceWorkout(workout) — upsert-by-id, LWW-guarded by
-                              updatedAt; syncApi.ts's only mutation entry point into this store, see below.
+                              hint in the add-set popup. replaceWorkout(workout) — upsert matched by id, then by
+                              date (one Workout per date is an invariant on both ends — the backend has UNIQUE
+                              (user_id, date) and resolves a same-date/different-id conflict by LWW, dropping
+                              the older one; this mirrors it), LWW-guarded by updatedAt; syncApi.ts's only
+                              mutation entry point into this store, see below.
+                              **An emptied day keeps its Workout record** (`exercises: []`) — removeExercise
+                              never deletes the Workout. Deletion isn't synced, so deleting it left the old id
+                              on the server, and re-adding an exercise that day minted a second Workout (new id,
+                              same date) whose push 500'd on the backend's UNIQUE (user_id, date). Keeping the
+                              record keeps one stable id per day, and pushing the empty version clears the day
+                              on other devices. Hence `nonEmptyWorkouts` (computed): history.vue and
+                              `workoutDates` (calendar dots) read it instead of `workouts`.
 app/stores/ui.ts           ← UI-only state, not persisted: selectedDate (drives which day is shown on Workout page),
                               addSetSheet (add/edit-set popup state — the name is historical, it's rendered
                               as a centered popup now, not a bottom sheet), exercisePicker (show flag),
@@ -309,8 +321,9 @@ app/utils/syncApi.ts       ← the client half of the flow in lift-tracker-backe
                               on the server — it *looks* like the server got wiped (push never sends
                               destructive "replace everything" semantics, so it can't actually do that), but
                               what really happened is pull silently deciding there's nothing new to ask for.
-                              Workouts have no deletion sync at all yet (see the note below), so "genuinely 0
-                              workouts after having synced before" can't happen through normal use — this
+                              Workout records are never deleted (an emptied day keeps an `exercises: []`
+                              record, see workout.ts above), so "genuinely 0 workouts after having synced
+                              before" can't happen through normal use — this
                               heuristic has no real false-positive cost.
 ```
 
@@ -386,15 +399,20 @@ app/layouts/default.vue           ← van-config-provider(dark) + TheHeader + <s
   app/pages/index.vue ("/")          ← Workout page for ui.selectedDate; swipe left/right (useSwipe) moves
                                         ui.selectedDate ±1 day, with a direction-aware Transition (slide+fade)
                                         keyed on the date so the animation direction matches the swipe.
-                                        Exercise cards are drag-reorderable (useSortable, whole card is the
+                                        Exercise *blocks* are drag-reorderable (useSortable, whole block is the
                                         drag target, delayOnTouchOnly so a quick tap still reaches buttons/sets
-                                        underneath) — see the reactivity gotcha below before touching this.
+                                        underneath) — a block is a single card or a whole superset, see the
+                                        superset note and the reactivity gotcha below before touching this.
     WorkoutRestTimer                    ← rest banner; visibility depends on settings.restTimerMode — 'off':
                                              never shown, 'auto': shown only while ui.restTimer.active (same as
                                              before), 'custom': always shown (a permanent plaque with its own
                                              play/pause/reset controls instead of the tap-anywhere-to-dismiss
                                              behavior the other two modes use)
-    WorkoutExerciseCard (per exercise)  ← sets table, PR badge, add/edit/delete set, delete exercise; 44×44
+    WorkoutExerciseCard (per exercise)  ← sets table, PR badge, add/edit/delete set; "⋯" van-popover menu
+                                             (superset with next / break superset / delete — `overlay` with a
+                                             transparent overlay-style, because Vant's Popover closes on outside
+                                             clicks only via `touchstart`, so without it a desktop mouse click
+                                             never closes the menu); 44×44
                                              WorkoutExerciseMedia thumbnail left of the title when
                                              `exercise.mediaUrl` is set (no drag-handle icon — the whole card is
                                              the drag target). WorkoutExerciseMedia (workout/ExerciseMedia.vue) is
@@ -462,7 +480,9 @@ Settings live in `TheRestTimerSettingsModal.vue`, opened from a menu item in `Th
 
 The UI only cares about the multiplier at the moment of logging: `AddSetSheet.vue`'s `isDumbbell` computed (`exercise.equipment === 'dumbbell'`) gates a ×1/×2 toggle, defaulting to **×2** (most bilateral dumbbell movements) via `AddSetSheetState.defaultDumbbellCount`, which `index.vue`'s `openAddSet`/`openEditSet` populate from `lastSet?.dumbbellCount ?? 2` / `set.dumbbellCount ?? 2` — same "prefill from whatever was just logged for this exercise" pattern `defaultWeight`/`defaultReps` already use, so switching to ×1 mid-session (fatigue, unilateral variation, only one dumbbell available) naturally carries forward to the next set instead of resetting. Because the count lives per-`SetEntry` rather than per-exercise or per-day, a session that mixes ×1 and ×2 sets needs no special aggregation logic anywhere — every sum/max already iterates individual sets, so each one just contributes its own true value.
 
-**A computed that only reads a property (not `.length`/an iteration) on a nested reactive array won't react to `.push()`/`.splice()` on it.** `workoutStore.getWorkoutByDate(date)?.exercises` is a plain property read — Vue tracks "did `.exercises` get reassigned", not "did its contents change". `index.vue`'s `storedExercises` computed spreads it (`[...workout.exercises]`) specifically to force the iteration that makes push/splice mutations (e.g. `addExercise`) actually invalidate it. This bit only in a scenario with an intermediate `ref` feeding `useSortable` (see below) — a bare `v-for="we in exercises"` directly over a computed doesn't need this, because `v-for`'s own iteration during render establishes the same tracking implicitly.
+**A computed that only reads a property (not `.length`/an iteration) on a nested reactive array won't react to `.push()`/`.splice()` on it.** `workoutStore.getWorkoutByDate(date)?.exercises` is a plain property read — Vue tracks "did `.exercises` get reassigned", not "did its contents change". `index.vue`'s `storedExercises` computed spreads it (`[...workout.exercises]`) specifically to force the iteration that makes push/splice mutations (e.g. `addExercise`) actually invalidate it. This bit only in a scenario with an intermediate `ref` feeding `useSortable` (see below) — a bare `v-for="we in exercises"` directly over a computed doesn't need this, because `v-for`'s own iteration during render establishes the same tracking implicitly. The same trap applies one level deeper: the spread tracks the array, not each element's fields — which is why `index.vue` computes its `structureKey()` (ids + `supersetId`s) *inside* the watch getter rather than watching `storedExercises` and comparing in the callback; otherwise linking/unlinking a superset (an in-place `supersetId` write on an element) never rebuilds the blocks.
+
+**Supersets: `WorkoutExercise.supersetId` — a shared UUID label on 2+ exercises, not a reference to anything.** Invariant: members are always contiguous in `Workout.exercises`. `workoutStore.linkWithNext()` adds the exercise right below the *whole* superset (so "superset with next" from any member appends the next exercise at the end of the group; linking into another superset merges them), `unlinkSuperset()` dissolves the whole group (pulling out a middle member would split it), and `removeExercise()` clears the tag from a group's last remaining member. `index.vue` renders and drags **blocks** (`toBlocks()`: a single exercise, or a superset's consecutive members) so a superset always moves as one unit and a drag can never break contiguity; reordering *within* a superset isn't supported. Synced as-is: `supersetId` is part of the backend's workout-exercise contract (nullable `superset_id uuid` column) — the backend's `ValidationPipe({ whitelist: true })` silently strips unknown fields, so any new `WorkoutExercise`/`SetEntry` field must land in the backend DTO first, or it's lost on the next pull. Not done yet: the rest timer still auto-starts after every logged set, even mid-superset.
 
 **`useSortable`'s target element gets destroyed/recreated on every date swipe** (`.workout-page__list` sits inside a `:key="currentDate"` Transition). Pass `watchElement: true` or the Sortable instance keeps pointing at a detached node after the first swipe and dragging silently stops working. Persisting the reorder goes through an explicit `workoutStore.reorderExercises()` call in a `watch`, not by letting `useSortable` own the store's array directly — same "mutations go through named store actions" rule as everywhere else in this app.
 

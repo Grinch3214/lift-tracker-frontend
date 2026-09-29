@@ -16,13 +16,23 @@
           </template>
         </span>
       </div>
-      <van-icon
-        name="delete-o"
-        size="18"
-        color="#888"
-        class="exercise-card__delete-btn"
-        @click="$emit('deleteExercise')"
-      />
+      <van-popover
+        v-model:show="showMenu"
+        :actions="menuActions"
+        placement="bottom-end"
+        overlay
+        :overlay-style="{ background: 'transparent' }"
+        @select="onMenuSelect"
+      >
+        <template #reference>
+          <van-icon
+            name="ellipsis"
+            size="18"
+            color="#888"
+            class="exercise-card__menu-btn"
+          />
+        </template>
+      </van-popover>
     </div>
 
     <div v-if="isTimeDistance" class="exercise-card__sets-header">
@@ -96,6 +106,7 @@
 </template>
 
 <script setup lang="ts">
+import type { PopoverAction } from 'vant';
 import type { Exercise, WorkoutExercise, SetEntry } from '~~/types';
 import { useWorkoutStore } from '@/stores/workout';
 import { isBodyweight } from '@/utils/format';
@@ -104,17 +115,44 @@ import { exerciseName, equipmentLabel } from '@/utils/exercises';
 const props = defineProps<{
   exercise: Exercise;
   workoutExercise: WorkoutExercise;
+  // False when nothing sits below this exercise's block (last one in the day) — hides
+  // "superset with next", there's nothing to link to.
+  canLinkNext: boolean;
 }>();
 
-defineEmits<{
+const emit = defineEmits<{
   addSet: [];
   editSet: [set: SetEntry];
   deleteSet: [setId: string];
   deleteExercise: [];
+  linkNext: [];
+  unlinkSuperset: [];
 }>();
 
 const { t } = useI18n();
 const workoutStore = useWorkoutStore();
+
+// ---- "⋯" menu ----
+type MenuActionKey = 'linkNext' | 'unlinkSuperset' | 'delete';
+
+const showMenu = ref(false);
+
+const menuActions = computed<(PopoverAction & { key: MenuActionKey })[]>(() => [
+  ...(props.canLinkNext
+    ? [{ key: 'linkNext' as const, text: t('workout.supersetWithNext') }]
+    : []),
+  ...(props.workoutExercise.supersetId
+    ? [{ key: 'unlinkSuperset' as const, text: t('workout.unlinkSuperset') }]
+    : []),
+  { key: 'delete', text: t('workout.remove'), color: '#ee0a24' },
+]);
+
+function onMenuSelect(action: PopoverAction) {
+  const key = (action as PopoverAction & { key: MenuActionKey }).key;
+  if (key === 'linkNext') emit('linkNext');
+  else if (key === 'unlinkSuperset') emit('unlinkSuperset');
+  else emit('deleteExercise');
+}
 
 const isTimeDistance = computed(
   () => props.exercise.trackingType === 'time-distance',
@@ -146,10 +184,6 @@ function isPR(set: SetEntry): boolean {
   border-radius: 14px;
   overflow: hidden;
 
-  &.is-dragging {
-    opacity: 0.6;
-  }
-
   &__header {
     display: flex;
     justify-content: space-between;
@@ -175,8 +209,9 @@ function isPR(set: SetEntry): boolean {
     opacity: 0.6;
   }
 
-  &__delete-btn {
+  &__menu-btn {
     padding: 0 6px 6px;
+    cursor: pointer;
   }
 
   &__sets-header {

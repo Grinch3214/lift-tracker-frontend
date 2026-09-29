@@ -280,3 +280,11 @@
 ### Changed
 
 - Synced data (workouts, custom muscle groups/exercises, catalog order) moved from `localStorage` to IndexedDB so long-term history no longer runs into localStorage's ~5–10MB limit (no migration of old localStorage data — no production users yet).
+
+### Added
+
+- Supersets: an exercise card's new "⋯" menu can link it with the next exercise (repeatable, to build 3+ exercise supersets) or break the superset; a superset is shown and drag-reordered as one block. Synced with the backend (`supersetId`).
+
+### Fixed
+
+- Clearing every exercise from a day and adding one again created a second workout for the same date, which the backend rejected (500 on push). An emptied day now keeps its workout record (hidden from history and the calendar), and workouts arriving via sync are also matched by date, not just id.

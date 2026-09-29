@@ -4,20 +4,40 @@
 
     <Transition :name="transitionName" mode="out-in">
       <div :key="currentDate" class="workout-page__content">
-        <WorkoutEmptyState v-if="exercises.length === 0" />
+        <WorkoutEmptyState v-if="storedExercises.length === 0" />
 
         <template v-else>
           <div ref="listEl" class="workout-page__list">
-            <WorkoutExerciseCard
-              v-for="we in exercises"
-              :key="we.id"
-              :exercise="getExercise(we.exerciseId)"
-              :workout-exercise="we"
-              @add-set="openAddSet(we)"
-              @edit-set="(set: SetEntry) => openEditSet(we, set)"
-              @delete-set="(setId: string) => removeSet(we.id, setId)"
-              @delete-exercise="removeExercise(we.id)"
-            />
+            <div
+              v-for="(block, blockIndex) in blocks"
+              :key="block.id"
+              class="workout-page__block"
+              :class="{ 'is-superset': block.items.length > 1 }"
+            >
+              <div
+                v-if="block.items.length > 1"
+                class="workout-page__superset-label"
+              >
+                {{ t('workout.superset') }}
+              </div>
+              <WorkoutExerciseCard
+                v-for="we in block.items"
+                :key="we.id"
+                :exercise="getExercise(we.exerciseId)"
+                :workout-exercise="we"
+                :can-link-next="blockIndex < blocks.length - 1"
+                @add-set="openAddSet(we)"
+                @edit-set="(set: SetEntry) => openEditSet(we, set)"
+                @delete-set="(setId: string) => removeSet(we.id, setId)"
+                @delete-exercise="removeExercise(we.id)"
+                @link-next="
+                  workoutStore.linkWithNext(currentDate, we.id)
+                "
+                @unlink-superset="
+                  workoutStore.unlinkSuperset(currentDate, we.id)
+                "
+              />
+            </div>
           </div>
 
           <div class="workout-page__summary">{{ summaryText }}</div>
@@ -68,29 +88,53 @@ const storedExercises = computed(() => [
   ...(workoutStore.getWorkoutByDate(currentDate.value)?.exercises ?? []),
 ]);
 
-// Local working copy useSortable can freely reorder while dragging. Only resynced
-// from the store when the set of exercise ids actually changes (add/remove/date
-// switch) - not on every store write, since reorderExercises() below would otherwise
-// echo straight back into this watcher and ping-pong forever.
-const exercises = ref<WorkoutExercise[]>([]);
+// Drag-and-drop works on blocks, not individual cards: a block is either a single
+// exercise or a whole superset (consecutive exercises sharing a supersetId), so a
+// superset always moves as one unit and can never be split apart by a drag.
+interface ExerciseBlock {
+  id: string; // supersetId for a superset, the exercise's own id otherwise
+  items: WorkoutExercise[];
+}
+
+function toBlocks(list: WorkoutExercise[]): ExerciseBlock[] {
+  const result: ExerciseBlock[] = [];
+  for (const we of list) {
+    const last = result[result.length - 1];
+    if (we.supersetId && last?.id === we.supersetId) {
+      last.items.push(we);
+    } else {
+      result.push({ id: we.supersetId ?? we.id, items: [we] });
+    }
+  }
+  return result;
+}
+
+// Id + superset membership, order-independent — changes on add/remove/link/unlink/date
+// switch, but not on a reorder.
+function structureKey(list: WorkoutExercise[]): string {
+  return list
+    .map((e) => `${e.id}:${e.supersetId ?? ''}`)
+    .sort()
+    .join(',');
+}
+
+// Local working copy useSortable can freely reorder while dragging. Only rebuilt from
+// the store when the structure actually changes - not on every store write, since
+// reorderExercises() below would otherwise echo straight back into this watcher and
+// ping-pong forever. The key is computed inside the watch getter on purpose: that's what
+// makes Vue track each element's `supersetId` — watching storedExercises itself only
+// tracks the array, so a link/unlink (which mutates elements in place) went unnoticed.
+const blocks = ref<ExerciseBlock[]>([]);
 watch(
-  storedExercises,
-  (val) => {
-    const currentIds = exercises.value
-      .map((e) => e.id)
-      .sort()
-      .join(',');
-    const newIds = val
-      .map((e) => e.id)
-      .sort()
-      .join(',');
-    if (currentIds !== newIds) exercises.value = [...val];
+  () => structureKey(storedExercises.value),
+  () => {
+    blocks.value = toBlocks(storedExercises.value);
   },
   { immediate: true },
 );
 
 const listEl = ref<HTMLElement | null>(null);
-useSortable(listEl, exercises, {
+useSortable(listEl, blocks, {
   watchElement: true, // .workout-page__list is destroyed/recreated on every date swipe (:key="currentDate")
   delay: 150,
   delayOnTouchOnly: true,
@@ -98,19 +142,19 @@ useSortable(listEl, exercises, {
   chosenClass: 'is-dragging',
 });
 
-watch(exercises, (val) => {
+watch(blocks, (val) => {
   workoutStore.reorderExercises(
     currentDate.value,
-    val.map((e) => e.id),
+    val.flatMap((b) => b.items.map((e) => e.id)),
   );
 });
 
 const totalSets = computed(() =>
-  exercises.value.reduce((sum, ex) => sum + ex.sets.length, 0),
+  storedExercises.value.reduce((sum, ex) => sum + ex.sets.length, 0),
 );
 
 const totalVolume = computed(() =>
-  exercises.value.reduce(
+  storedExercises.value.reduce(
     (sum, ex) =>
       sum +
       ex.sets.reduce(
@@ -123,7 +167,7 @@ const totalVolume = computed(() =>
 );
 
 const exerciseWord = computed(() =>
-  pluralize(exercises.value.length, {
+  pluralize(storedExercises.value.length, {
     one: t('units.exerciseWordOne'),
     few: t('units.exerciseWordFew'),
     many: t('units.exerciseWordMany'),
@@ -141,7 +185,7 @@ const setWord = computed(() =>
 const summaryText = computed(() =>
   t('workout.summary', {
     exercises: t('units.countWord', {
-      count: exercises.value.length,
+      count: storedExercises.value.length,
       word: exerciseWord.value,
     }),
     sets: t('units.countWord', { count: totalSets.value, word: setWord.value }),
@@ -271,6 +315,40 @@ async function removeExercise(workoutExerciseId: string) {
     flex-direction: column;
     gap: 10px;
     padding: 10px 12px;
+  }
+
+  &__block {
+    &.is-dragging {
+      opacity: 0.6;
+    }
+
+    // One shared container for all the superset's cards: accent bar on the left, cards
+    // stacked flush with a divider instead of the usual gap and individual rounding.
+    &.is-superset {
+      background: var(--van-background-2);
+      border-radius: 14px;
+      border-inline-start: 3px solid var(--van-primary-color);
+      overflow: hidden;
+
+      :deep(.exercise-card) {
+        border-radius: 0;
+        background: transparent;
+      }
+
+      :deep(.exercise-card + .exercise-card) {
+        border-block-start: 1px solid var(--van-border-color);
+      }
+    }
+  }
+
+  &__superset-label {
+    padding: 10px 14px 0;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    color: var(--van-primary-color);
+    user-select: none;
   }
 
   &__summary {
