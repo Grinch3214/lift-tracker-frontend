@@ -98,6 +98,7 @@
       "bodyweight": "Собственный вес",
       "smith-machine": "Тренажёр Смита",
       "hammer": "Хаммер",
+      "crossover": "Кроссовер",
       "t-bar": "Т-гриф"
     }
   },
@@ -175,6 +176,7 @@
       "cable-crossover-lying": "Сведение рук в кроссовере лёжа",
       "seated-chest-fly-machine": "Сведение рук сидя",
       "chest-dip": "Брусья на грудь",
+      "assisted-wide-grip-chest-dip-kneeling": "Брусья в гравитроне широким хватом (с упором коленями)",
       "push-up": "Отжимания",
       "pullover-barbell": "Пуловер (штанга)",
       "pullover-dumbbell": "Пуловер (гантели)",

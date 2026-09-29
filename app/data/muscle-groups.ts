@@ -21,6 +21,7 @@ export const exercises: Exercise[] = [
     name: 'Barbell Bench Press',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'barbell',
   },
   {
@@ -29,6 +30,7 @@ export const exercises: Exercise[] = [
     name: 'Dumbbell Bench Press',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'dumbbell',
   },
   {
@@ -37,6 +39,7 @@ export const exercises: Exercise[] = [
     name: 'Smith Machine Bench Press',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'smith-machine',
   },
   {
@@ -45,6 +48,7 @@ export const exercises: Exercise[] = [
     name: 'Barbell Incline Bench Press',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'barbell',
   },
   {
@@ -53,6 +57,7 @@ export const exercises: Exercise[] = [
     name: 'Dumbbell Incline Bench Press',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'dumbbell',
   },
   {
@@ -61,6 +66,7 @@ export const exercises: Exercise[] = [
     name: 'Smith Machine Incline Bench Press',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'smith-machine',
   },
   {
@@ -69,6 +75,7 @@ export const exercises: Exercise[] = [
     name: 'Barbell Decline Bench Press',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'barbell',
   },
   {
@@ -77,6 +84,7 @@ export const exercises: Exercise[] = [
     name: 'Dumbbell Decline Bench Press',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'dumbbell',
   },
   {
@@ -85,6 +93,7 @@ export const exercises: Exercise[] = [
     name: 'Smith Machine Decline Bench Press',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'smith-machine',
   },
   {
@@ -93,7 +102,8 @@ export const exercises: Exercise[] = [
     name: 'Lever Crossover',
     isCustom: false,
     trackingType: 'weight-reps',
-    equipment: 'hammer',
+    mediaUrl: '',
+    equipment: 'machine',
   },
   {
     id: 'hammer-chest-press',
@@ -101,6 +111,7 @@ export const exercises: Exercise[] = [
     name: 'Hammer Strength Chest Press',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'hammer',
   },
   {
@@ -109,6 +120,7 @@ export const exercises: Exercise[] = [
     name: 'Seated Chest Press',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'machine',
   },
   {
@@ -117,6 +129,7 @@ export const exercises: Exercise[] = [
     name: 'Pec Deck Fly',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'machine',
   },
   {
@@ -125,6 +138,7 @@ export const exercises: Exercise[] = [
     name: 'Dumbbell Flyes',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'dumbbell',
   },
   {
@@ -133,6 +147,7 @@ export const exercises: Exercise[] = [
     name: 'Incline Dumbbell Flyes',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'dumbbell',
   },
   {
@@ -141,6 +156,7 @@ export const exercises: Exercise[] = [
     name: 'Decline Dumbbell Flyes',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'dumbbell',
   },
   {
@@ -149,7 +165,8 @@ export const exercises: Exercise[] = [
     name: 'Cable Crossover',
     isCustom: false,
     trackingType: 'weight-reps',
-    equipment: 'cable',
+    mediaUrl: '',
+    equipment: 'crossover',
   },
   {
     id: 'low-to-high-cable-crossover',
@@ -157,7 +174,8 @@ export const exercises: Exercise[] = [
     name: 'Low-to-High Cable Crossover',
     isCustom: false,
     trackingType: 'weight-reps',
-    equipment: 'cable',
+    mediaUrl: '',
+    equipment: 'crossover',
   },
   {
     id: 'cable-crossover-lying',
@@ -165,7 +183,8 @@ export const exercises: Exercise[] = [
     name: 'Cable Crossover (Lying)',
     isCustom: false,
     trackingType: 'weight-reps',
-    equipment: 'cable',
+    mediaUrl: '',
+    equipment: 'crossover',
   },
   {
     id: 'seated-chest-fly-machine',
@@ -173,6 +192,7 @@ export const exercises: Exercise[] = [
     name: 'Seated Chest Fly Machine',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'machine',
   },
   {
@@ -181,7 +201,17 @@ export const exercises: Exercise[] = [
     name: 'Chest Dip',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'bodyweight',
+  },
+  {
+    id: 'assisted-wide-grip-chest-dip-kneeling',
+    muscleGroupId: 'chest',
+    name: 'Assisted Wide-Grip Chest Dip (kneeling)',
+    isCustom: false,
+    trackingType: 'weight-reps',
+    mediaUrl: '',
+    equipment: 'machine',
   },
   {
     id: 'push-up',
@@ -189,6 +219,7 @@ export const exercises: Exercise[] = [
     name: 'Push-Up',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'bodyweight',
   },
   {
@@ -197,6 +228,7 @@ export const exercises: Exercise[] = [
     name: 'Barbell Pullover',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'barbell',
   },
   {
@@ -205,6 +237,7 @@ export const exercises: Exercise[] = [
     name: 'Dumbbell Pullover',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'dumbbell',
   },
   {
@@ -213,6 +246,7 @@ export const exercises: Exercise[] = [
     name: 'Machine Pullover',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'machine',
   },
 
@@ -222,6 +256,7 @@ export const exercises: Exercise[] = [
     name: 'Deadlift',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'barbell',
   },
   {
@@ -230,6 +265,7 @@ export const exercises: Exercise[] = [
     name: 'Bent-Over Row',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'barbell',
   },
   {
@@ -238,6 +274,7 @@ export const exercises: Exercise[] = [
     name: 'Bent-Over Row (Smith Machine)',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'smith-machine',
   },
   {
@@ -246,6 +283,7 @@ export const exercises: Exercise[] = [
     name: 'Bent-Over Row (Cable)',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'cable',
   },
   {
@@ -254,6 +292,7 @@ export const exercises: Exercise[] = [
     name: 'T-Bar Row',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 't-bar',
   },
   {
@@ -262,6 +301,7 @@ export const exercises: Exercise[] = [
     name: 'T-Bar Row (Barbell)',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'barbell',
   },
   {
@@ -270,6 +310,7 @@ export const exercises: Exercise[] = [
     name: 'One-Arm Dumbbell Row',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'dumbbell',
   },
   {
@@ -278,6 +319,7 @@ export const exercises: Exercise[] = [
     name: 'Seated Cable Row',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'cable',
   },
   {
@@ -286,6 +328,7 @@ export const exercises: Exercise[] = [
     name: 'Seated Lever Row',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'cable',
   },
   {
@@ -294,6 +337,7 @@ export const exercises: Exercise[] = [
     name: 'Lat Pulldown',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'cable',
   },
   {
@@ -302,6 +346,7 @@ export const exercises: Exercise[] = [
     name: 'Close-Grip Lat Pulldown',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'cable',
   },
   {
@@ -310,6 +355,7 @@ export const exercises: Exercise[] = [
     name: 'Behind-the-Neck Lat Pulldown',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'cable',
   },
   {
@@ -318,6 +364,7 @@ export const exercises: Exercise[] = [
     name: 'Vertical Pulldown Machine',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'machine',
   },
   {
@@ -326,6 +373,7 @@ export const exercises: Exercise[] = [
     name: 'Straight-Arm Pulldown',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'cable',
   },
   {
@@ -334,6 +382,7 @@ export const exercises: Exercise[] = [
     name: 'Pull-Up',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'bodyweight',
   },
   {
@@ -342,6 +391,7 @@ export const exercises: Exercise[] = [
     name: 'Wide-Grip Pull-Up',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'bodyweight',
   },
   {
@@ -350,6 +400,7 @@ export const exercises: Exercise[] = [
     name: 'Close-Grip Pull-Up',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'bodyweight',
   },
   {
@@ -358,6 +409,7 @@ export const exercises: Exercise[] = [
     name: 'Hyperextension',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'bodyweight',
   },
 
@@ -367,6 +419,7 @@ export const exercises: Exercise[] = [
     name: 'Barbell Shrug',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'barbell',
   },
   {
@@ -375,6 +428,7 @@ export const exercises: Exercise[] = [
     name: 'Behind-the-Back Barbell Shrug',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'barbell',
   },
   {
@@ -383,6 +437,7 @@ export const exercises: Exercise[] = [
     name: 'Dumbbell Shrug',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'dumbbell',
   },
   {
@@ -391,6 +446,7 @@ export const exercises: Exercise[] = [
     name: 'Shrug Machine',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'machine',
   },
   {
@@ -399,6 +455,7 @@ export const exercises: Exercise[] = [
     name: 'Smith Machine Shrug',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'smith-machine',
   },
   {
@@ -407,6 +464,7 @@ export const exercises: Exercise[] = [
     name: 'Behind-the-Back Smith Machine Shrug',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'smith-machine',
   },
 
@@ -416,6 +474,7 @@ export const exercises: Exercise[] = [
     name: 'Overhead Press',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'barbell',
   },
   {
@@ -424,6 +483,7 @@ export const exercises: Exercise[] = [
     name: 'Seated Barbell Press',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'barbell',
   },
   {
@@ -432,6 +492,7 @@ export const exercises: Exercise[] = [
     name: 'Seated Machine Press',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'machine',
   },
   {
@@ -440,6 +501,7 @@ export const exercises: Exercise[] = [
     name: 'Seated Smith Machine Press',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'smith-machine',
   },
   {
@@ -448,6 +510,7 @@ export const exercises: Exercise[] = [
     name: 'Seated Dumbbell Press',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'dumbbell',
   },
   {
@@ -456,6 +519,7 @@ export const exercises: Exercise[] = [
     name: 'Arnold Press',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'dumbbell',
   },
   {
@@ -464,6 +528,7 @@ export const exercises: Exercise[] = [
     name: 'Lateral Raise',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'dumbbell',
   },
   {
@@ -472,6 +537,7 @@ export const exercises: Exercise[] = [
     name: 'Bent-Over Lateral Raise',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'dumbbell',
   },
   {
@@ -480,6 +546,7 @@ export const exercises: Exercise[] = [
     name: 'Lying Lateral Raise',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'dumbbell',
   },
   {
@@ -488,6 +555,7 @@ export const exercises: Exercise[] = [
     name: 'Reverse Fly Machine',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'hammer',
   },
   {
@@ -496,6 +564,7 @@ export const exercises: Exercise[] = [
     name: 'Lateral Raise Machine',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'hammer',
   },
   {
@@ -504,6 +573,7 @@ export const exercises: Exercise[] = [
     name: 'Front Raise',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'dumbbell',
   },
   {
@@ -512,6 +582,7 @@ export const exercises: Exercise[] = [
     name: 'Front Raise (Plate)',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
   },
   {
     id: 'upright-row-barbell',
@@ -519,6 +590,7 @@ export const exercises: Exercise[] = [
     name: 'Upright Row',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'barbell',
   },
   {
@@ -527,6 +599,7 @@ export const exercises: Exercise[] = [
     name: 'Seated Rear Delt Raise',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'dumbbell',
   },
   {
@@ -535,6 +608,7 @@ export const exercises: Exercise[] = [
     name: 'One-Arm Lateral Raise',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'cable',
   },
 
@@ -544,6 +618,7 @@ export const exercises: Exercise[] = [
     name: 'Barbell Curl',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'barbell',
   },
   {
@@ -552,6 +627,7 @@ export const exercises: Exercise[] = [
     name: 'Biceps Curl Machine',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'machine',
   },
   {
@@ -560,6 +636,7 @@ export const exercises: Exercise[] = [
     name: 'Low Pulley Curl',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'cable',
   },
   {
@@ -568,6 +645,7 @@ export const exercises: Exercise[] = [
     name: 'Preacher Curl Machine',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'machine',
   },
   {
@@ -576,6 +654,7 @@ export const exercises: Exercise[] = [
     name: 'Preacher Curl (Dumbbell)',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'dumbbell',
   },
   {
@@ -584,6 +663,7 @@ export const exercises: Exercise[] = [
     name: 'Dumbbell Curl',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'dumbbell',
   },
   {
@@ -592,6 +672,7 @@ export const exercises: Exercise[] = [
     name: 'Dumbbell Curl with Supination',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'dumbbell',
   },
   {
@@ -600,6 +681,7 @@ export const exercises: Exercise[] = [
     name: 'Seated Dumbbell Curl',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'dumbbell',
   },
   {
@@ -608,6 +690,7 @@ export const exercises: Exercise[] = [
     name: 'Incline Dumbbell Curl',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'dumbbell',
   },
   {
@@ -616,6 +699,7 @@ export const exercises: Exercise[] = [
     name: 'Overhead Cable Curl',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'cable',
   },
   {
@@ -624,6 +708,7 @@ export const exercises: Exercise[] = [
     name: 'Concentration Curl',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'dumbbell',
   },
   {
@@ -632,6 +717,7 @@ export const exercises: Exercise[] = [
     name: 'Chin-Up',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'bodyweight',
   },
   {
@@ -640,6 +726,7 @@ export const exercises: Exercise[] = [
     name: 'Hammer Curl',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'dumbbell',
   },
 
@@ -649,6 +736,7 @@ export const exercises: Exercise[] = [
     name: 'Close-Grip Bench Press',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'barbell',
   },
   {
@@ -657,6 +745,7 @@ export const exercises: Exercise[] = [
     name: 'Close-Grip Bench Press (Smith Machine)',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'smith-machine',
   },
   {
@@ -665,6 +754,7 @@ export const exercises: Exercise[] = [
     name: 'Lying Triceps Extension',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'barbell',
   },
   {
@@ -673,6 +763,7 @@ export const exercises: Exercise[] = [
     name: 'Seated Triceps Extension',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'barbell',
   },
   {
@@ -681,6 +772,7 @@ export const exercises: Exercise[] = [
     name: 'Seated Dumbbell Triceps Extension',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'dumbbell',
   },
   {
@@ -689,6 +781,7 @@ export const exercises: Exercise[] = [
     name: 'Lying Dumbbell Triceps Extension',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'dumbbell',
   },
   {
@@ -697,6 +790,7 @@ export const exercises: Exercise[] = [
     name: 'Single-Arm Overhead Triceps Extension',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'dumbbell',
   },
   {
@@ -705,6 +799,7 @@ export const exercises: Exercise[] = [
     name: 'Triceps Extension Machine',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'machine',
   },
   {
@@ -713,6 +808,7 @@ export const exercises: Exercise[] = [
     name: 'Overhead Cable Triceps Extension',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'cable',
   },
   {
@@ -721,6 +817,7 @@ export const exercises: Exercise[] = [
     name: 'Triceps Pushdown',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'cable',
   },
   {
@@ -729,6 +826,7 @@ export const exercises: Exercise[] = [
     name: 'Dumbbell Kickback',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'dumbbell',
   },
   {
@@ -737,6 +835,7 @@ export const exercises: Exercise[] = [
     name: 'Triceps Dip',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'bodyweight',
   },
   {
@@ -745,6 +844,7 @@ export const exercises: Exercise[] = [
     name: 'Triceps Dip Machine',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'machine',
   },
   {
@@ -753,6 +853,7 @@ export const exercises: Exercise[] = [
     name: 'Bench Dip',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'bodyweight',
   },
 
@@ -762,6 +863,7 @@ export const exercises: Exercise[] = [
     name: 'Wrist Curl',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'barbell',
   },
   {
@@ -770,6 +872,7 @@ export const exercises: Exercise[] = [
     name: 'Wrist Curl (Dumbbell)',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'dumbbell',
   },
   {
@@ -778,6 +881,7 @@ export const exercises: Exercise[] = [
     name: 'Behind-the-Back Wrist Curl',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'barbell',
   },
 
@@ -787,6 +891,7 @@ export const exercises: Exercise[] = [
     name: 'Barbell Squat',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'barbell',
   },
   {
@@ -795,6 +900,7 @@ export const exercises: Exercise[] = [
     name: 'Smith Machine Squat',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'smith-machine',
   },
   {
@@ -803,6 +909,7 @@ export const exercises: Exercise[] = [
     name: 'Leg Press',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'machine',
   },
   {
@@ -811,6 +918,7 @@ export const exercises: Exercise[] = [
     name: 'Seated Leg Curl',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'machine',
   },
   {
@@ -819,6 +927,7 @@ export const exercises: Exercise[] = [
     name: 'Lying Leg Curl',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'machine',
   },
   {
@@ -827,6 +936,7 @@ export const exercises: Exercise[] = [
     name: 'Leg Extension',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'machine',
   },
   {
@@ -835,6 +945,7 @@ export const exercises: Exercise[] = [
     name: 'Hack Squat',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'machine',
   },
   {
@@ -843,6 +954,7 @@ export const exercises: Exercise[] = [
     name: 'Barbell Front Squat',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'barbell',
   },
   {
@@ -851,6 +963,7 @@ export const exercises: Exercise[] = [
     name: 'Smith Machine Front Squat',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'smith-machine',
   },
   {
@@ -859,6 +972,7 @@ export const exercises: Exercise[] = [
     name: 'Dumbbell Lunge',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'dumbbell',
   },
   {
@@ -867,6 +981,7 @@ export const exercises: Exercise[] = [
     name: 'Barbell Lunge',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'barbell',
   },
   {
@@ -875,6 +990,7 @@ export const exercises: Exercise[] = [
     name: 'Bulgarian Split Squat',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'bodyweight',
   },
   {
@@ -883,6 +999,7 @@ export const exercises: Exercise[] = [
     name: 'Dumbbell Bulgarian Split Squat',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'dumbbell',
   },
   {
@@ -891,6 +1008,7 @@ export const exercises: Exercise[] = [
     name: 'Dumbbell Sumo Squat',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'dumbbell',
   },
   {
@@ -899,6 +1017,7 @@ export const exercises: Exercise[] = [
     name: 'Seated Hip Adduction',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'machine',
   },
   {
@@ -907,6 +1026,7 @@ export const exercises: Exercise[] = [
     name: 'Seated Hip Abduction',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'machine',
   },
   {
@@ -915,6 +1035,7 @@ export const exercises: Exercise[] = [
     name: 'Standing Cable Hip Abduction',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'cable',
   },
   {
@@ -923,6 +1044,7 @@ export const exercises: Exercise[] = [
     name: 'Barbell Hip Thrust',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'barbell',
   },
   {
@@ -931,6 +1053,7 @@ export const exercises: Exercise[] = [
     name: 'Glute Bridge Machine',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'machine',
   },
 
@@ -940,6 +1063,7 @@ export const exercises: Exercise[] = [
     name: 'Standing Calf Raise',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'bodyweight',
   },
   {
@@ -948,6 +1072,7 @@ export const exercises: Exercise[] = [
     name: 'Standing Calf Raise (Machine)',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'machine',
   },
   {
@@ -956,6 +1081,7 @@ export const exercises: Exercise[] = [
     name: 'Smith Machine Standing Calf Raise',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'smith-machine',
   },
   {
@@ -964,6 +1090,7 @@ export const exercises: Exercise[] = [
     name: 'Toe Press',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'machine',
   },
   {
@@ -972,6 +1099,7 @@ export const exercises: Exercise[] = [
     name: 'Seated Calf Raise (Machine)',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'machine',
   },
   {
@@ -980,6 +1108,7 @@ export const exercises: Exercise[] = [
     name: 'Barbell Seated Calf Raise',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'barbell',
   },
   {
@@ -988,6 +1117,7 @@ export const exercises: Exercise[] = [
     name: 'Dumbbell Seated Calf Raise',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'dumbbell',
   },
 
@@ -997,6 +1127,7 @@ export const exercises: Exercise[] = [
     name: 'Plank',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'bodyweight',
   },
   {
@@ -1005,6 +1136,7 @@ export const exercises: Exercise[] = [
     name: 'Crunch',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'bodyweight',
   },
   {
@@ -1013,6 +1145,7 @@ export const exercises: Exercise[] = [
     name: 'Leg Raise',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'bodyweight',
   },
   {
@@ -1021,6 +1154,7 @@ export const exercises: Exercise[] = [
     name: 'Cable Crunch',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'cable',
   },
 
@@ -1030,6 +1164,7 @@ export const exercises: Exercise[] = [
     name: 'Burpee',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'bodyweight',
   },
   {
@@ -1038,6 +1173,7 @@ export const exercises: Exercise[] = [
     name: 'Mountain Climber',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'bodyweight',
   },
   {
@@ -1046,6 +1182,7 @@ export const exercises: Exercise[] = [
     name: 'Battle Ropes',
     isCustom: false,
     trackingType: 'weight-reps',
+    mediaUrl: '',
     equipment: 'bodyweight',
   },
   {
@@ -1054,6 +1191,7 @@ export const exercises: Exercise[] = [
     name: 'Treadmill',
     isCustom: false,
     trackingType: 'time-distance',
+    mediaUrl: '',
   },
   {
     id: 'stationary-bike',
@@ -1061,6 +1199,7 @@ export const exercises: Exercise[] = [
     name: 'Stationary Bike',
     isCustom: false,
     trackingType: 'time-distance',
+    mediaUrl: '',
   },
   {
     id: 'stepper',
@@ -1068,6 +1207,7 @@ export const exercises: Exercise[] = [
     name: 'Stepper',
     isCustom: false,
     trackingType: 'time-distance',
+    mediaUrl: '',
   },
   {
     id: 'stair-climber',
@@ -1075,6 +1215,7 @@ export const exercises: Exercise[] = [
     name: 'Stair Climber',
     isCustom: false,
     trackingType: 'time-distance',
+    mediaUrl: '',
   },
   {
     id: 'elliptical',
@@ -1082,6 +1223,7 @@ export const exercises: Exercise[] = [
     name: 'Elliptical',
     isCustom: false,
     trackingType: 'time-distance',
+    mediaUrl: '',
   },
   {
     id: 'rowing-machine',
@@ -1089,5 +1231,6 @@ export const exercises: Exercise[] = [
     name: 'Rowing Machine',
     isCustom: false,
     trackingType: 'time-distance',
+    mediaUrl: '',
   },
 ];

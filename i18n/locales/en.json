@@ -98,6 +98,7 @@
       "bodyweight": "Bodyweight",
       "smith-machine": "Smith Machine",
       "hammer": "Hammer Strength",
+      "crossover": "Cable Crossover",
       "t-bar": "T-Bar"
     }
   },
@@ -175,6 +176,7 @@
       "cable-crossover-lying": "Cable Crossover (Lying)",
       "seated-chest-fly-machine": "Seated Chest Fly Machine",
       "chest-dip": "Chest Dip",
+      "assisted-wide-grip-chest-dip-kneeling": "Assisted Wide-Grip Chest Dip (Kneeling)",
       "push-up": "Push-Up",
       "pullover-barbell": "Barbell Pullover",
       "pullover-dumbbell": "Dumbbell Pullover",

@@ -77,7 +77,7 @@ app/utils/id.ts             ← generateId() — crypto.randomUUID() when availa
                               the first id-generating action. Always use this helper, never call
                               crypto.randomUUID() directly.
 
-app/data/muscle-groups.ts  ← static seed data: 11 muscle groups, 134 exercises (id, name, muscleGroupId,
+app/data/muscle-groups.ts  ← static seed data: 11 muscle groups, 135 exercises (id, name, muscleGroupId,
                               equipment, trackingType). `name` here is an English dev fallback only — never
                               rendered directly, see i18n below. `equipment` is optional and occasionally
                               omitted on purpose (e.g. `front-raise-plate` — a plate isn't one of the existing

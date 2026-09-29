@@ -101,6 +101,7 @@ const equipmentOptions: EquipmentType[] = [
   'bodyweight',
   'smith-machine',
   'hammer',
+  'crossover',
 ];
 const trackingTypeOptions: TrackingType[] = ['weight-reps', 'time-distance'];
 const trackingTypeLabelKeys: Record<TrackingType, string> = {
