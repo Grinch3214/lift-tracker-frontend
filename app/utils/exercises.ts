@@ -51,7 +51,13 @@ export function getExercisesByMuscleGroup(muscleGroupId: string): Exercise[] {
     (exercise) => exercise.muscleGroupId === muscleGroupId,
   );
   const all = [...custom, ...builtin];
-  return applyOrder(all, catalogStore.exerciseOrder[muscleGroupId] ?? []);
+  const order = catalogStore.exerciseOrder[muscleGroupId] ?? [];
+  const ordered = applyOrder(all, order);
+
+  const known = new Set(order);
+  const fresh = ordered.filter((e) => e.isCustom && !known.has(e.id));
+  if (!fresh.length) return ordered;
+  return [...fresh, ...ordered.filter((e) => !fresh.includes(e))];
 }
 
 export function exerciseName(
@@ -61,6 +67,17 @@ export function exerciseName(
   return exercise.isCustom
     ? exercise.name
     : t(`catalog.exercises.${exercise.id}`);
+}
+
+export function hasExerciseMedia(exercise: Exercise): boolean {
+  return !!(exercise.mediaUrl || exercise.mediaId);
+}
+
+export function equipmentLabel(
+  exercise: Exercise,
+  t: (key: string) => string,
+): string {
+  return exercise.equipment ? t(`units.equipment.${exercise.equipment}`) : '';
 }
 
 export function muscleGroupName(

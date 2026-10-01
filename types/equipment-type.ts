@@ -7,4 +7,5 @@ export type EquipmentType =
   | 'bodyweight'
   | 'smith-machine'
   | 'hammer'
+  | 'crossover'
   | 't-bar';

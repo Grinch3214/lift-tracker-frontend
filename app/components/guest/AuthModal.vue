@@ -16,15 +16,9 @@
       v-for="field in FIELDS"
       :key="field.key"
       v-model="form[field.key]"
-      :type="field.key === 'password' && showPassword ? 'text' : field.type"
+      :type="field.key === 'password' ? passwordInputType : field.type"
       :placeholder="t(field.placeholderKey)"
-      :right-icon="
-        field.key === 'password'
-          ? showPassword
-            ? 'eye-o'
-            : 'closed-eye'
-          : undefined
-      "
+      :right-icon="field.key === 'password' ? passwordToggleIcon : undefined"
       class="auth-modal__input"
       @click-right-icon="showPassword = !showPassword"
     />
@@ -81,6 +75,11 @@ const form = reactive({ email: '', password: '' });
 const loading = ref(false);
 const errorMessage = ref('');
 const showPassword = ref(false);
+
+const passwordInputType = computed(() => (showPassword.value ? 'text' : 'password'));
+const passwordToggleIcon = computed(() =>
+  showPassword.value ? 'eye-o' : 'closed-eye',
+);
 
 watch(
   () => uiStore.authModal.show,

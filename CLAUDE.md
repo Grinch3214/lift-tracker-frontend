@@ -23,7 +23,7 @@ No automated test suite yet — no correctness gate in CI. `playwright` is insta
 
 **Stack:** Nuxt 4 + TypeScript + Pinia (`@pinia/nuxt`) + Vant 4 (`@vant/nuxt`) + VueUse (`@vueuse/nuxt`) + `@nuxtjs/i18n` + SCSS. Drag-and-drop reordering uses `@vueuse/integrations`'s `useSortable` (wraps `sortablejs`) — neither Vant nor `@vueuse/core` has a list-reorder primitive.
 
-**Local-first, backend optional.** All persistence is still `localStorage` via VueUse's `useStorage`, wrapped inside Pinia stores — the app works fully offline, with no account, exactly as before. As of v1.3 there's now also a sibling repo, `lift-tracker-backend` (one level up): auth (`/auth/*`) and sync (`/sync/*`) are both implemented and wired up from the frontend — see `app/stores/auth.ts`/`sync.ts` and `app/utils/api.ts`/`authApi.ts`/`syncApi.ts` below. `runtimeConfig.public.apiBaseUrl` (`.env.example`) points at it. Sync fires right after register/login and again on `app.vue`'s background triggers (visibility change, reconnect, a backstop timer — see app.vue below); nothing wires it to individual store mutations. Local storage's role doesn't change even once synced — it's not replaced by the backend, mutations still write there first and instantly; the backend is a copy kept in sync, not a new source of truth the UI waits on (see `docs/02-mvp.md` v1.3, `docs/04-decisions.md`).
+**Local-first, backend optional.** All persistence is local, wrapped inside Pinia stores — the app works fully offline, with no account, exactly as before. Two local backends, split by what's synced: everything synced with the backend (workouts, custom muscle groups/exercises, catalog order) lives in **IndexedDB** via `app/utils/idbStorage.ts#useIdbStorage()` — the data that grows without bound over years of use and would outgrow localStorage's ~5–10MB cap; small fixed-size state (settings, auth, guest counter, `lastSyncedAt`) stays in `localStorage` via VueUse's `useStorage`. As of v1.3 there's now also a sibling repo, `lift-tracker-backend` (one level up): auth (`/auth/*`) and sync (`/sync/*`) are both implemented and wired up from the frontend — see `app/stores/auth.ts`/`sync.ts` and `app/utils/api.ts`/`authApi.ts`/`syncApi.ts` below. `runtimeConfig.public.apiBaseUrl` (`.env.example`) points at it. Sync fires right after register/login and again on `app.vue`'s background triggers (visibility change, reconnect, a backstop timer — see app.vue below); nothing wires it to individual store mutations. Local storage's role doesn't change even once synced — it's not replaced by the backend, mutations still write there first and instantly; the backend is a copy kept in sync, not a new source of truth the UI waits on (see `docs/02-mvp.md` v1.3, `docs/04-decisions.md`).
 
 **`ssr: false` in `nuxt.config.ts` is load-bearing, don't remove without fixing the underlying issue first.** With SSR on, the server renders with an empty store (no `localStorage` on the server), and Pinia/Nuxt hydration overwrites the client's already-hydrated `useStorage` state with that empty server snapshot on every page load — `useStorage`'s watcher then persists the emptiness back into `localStorage`, silently wiping saved workouts on refresh. Since this app has no server-rendered content to gain from SSR anyway, keeping it off is the correct fix, not a workaround.
 
@@ -54,6 +54,38 @@ types/*.ts                 ← shared interfaces: MuscleGroup, Exercise, Workout
                               EquipmentType, TrackingType. All ids are string, generated via
                               app/utils/id.ts#generateId() at creation time
 
+app/utils/idbStorage.ts     ← useIdbStorage(key, initial) → {state, load} — a ref persisted to IndexedDB
+                              (idb-keyval, db 'lift-tracker', store 'keyval', one key per collection).
+                              IndexedDB's API is async-only (unlike localStorage.getItem), so `state` starts at
+                              `initial` and gets its stored value only once `load()` resolves — nothing to do
+                              with SSR (which is off). The persist watcher (deep, JSON round-trip before `set()`
+                              — reactive Proxies fail structured clone with DataCloneError) is registered only
+                              after that. No migration from the old localStorage keys and no localStorage
+                              fallback — the app had no production users when this landed.
+app/utils/imageCompress.ts  ← compressImage(file) — user photo → square webp Blob: createImageBitmap (decode, EXIF
+                              rotation) → canvas center-crop + downscale to 512px → canvas.toBlob('image/webp',
+                              0.8) (the actual compression; ~20–60KB from a multi-MB camera photo). Falls back
+                              to JPEG when the browser silently can't encode webp (older Safari returns PNG).
+                              Re-encoding drops all EXIF, GPS included.
+app/utils/mediaStorage.ts   ← saveMedia/deleteMedia/getMediaUrl — user-uploaded images as raw Blobs keyed by
+                              mediaId, in a *separate* IndexedDB database ('lift-tracker-media' — idb-keyval's
+                              createStore owns one store per db; and idbStorage.ts's JSON round-trip can't hold
+                              Blobs anyway). getMediaUrl caches one object URL per mediaId per page load. A
+                              mediaId's image never changes: replacing a photo = new mediaId + deleting the old
+                              one (done in AddExerciseModal.vue#confirm, which also only writes to IndexedDB on
+                              confirm — cancelling leaves nothing behind). Synced via the backend's `/media`
+                              (see lift-tracker-backend API.md): upload is syncApi.ts#uploadMedia(); download is
+                              here — getMediaUrl() falls back to the public `GET /media/:id` (plain $fetch, no
+                              auth) when there's no local Blob, then keeps it in IndexedDB for offline use;
+                              concurrent lookups of one id share a single download. null (→ placeholder) when
+                              it's neither local nor downloadable (offline / not uploaded yet).
+app/plugins/idb-load.client.ts ← awaits workoutStore.load() + catalogStore.load() before the app mounts (Nuxt
+                              awaits async plugins). Load-bearing: without it components and app.vue's
+                              `{immediate: true}` sync triggers would see still-empty stores — the first sync
+                              would then trip syncApi.ts's "looks wiped" full-pull heuristic, and a mutation
+                              made before loading would be overwritten. Any new IDB-backed store must be added
+                              here too.
+
 app/utils/id.ts             ← generateId() — crypto.randomUUID() when available, otherwise a
                               crypto.getRandomValues()-based UUID v4 fallback. Needed because randomUUID() only
                               exists in secure contexts (HTTPS/localhost); opening the dev server from a phone
@@ -62,7 +94,7 @@ app/utils/id.ts             ← generateId() — crypto.randomUUID() when availa
                               the first id-generating action. Always use this helper, never call
                               crypto.randomUUID() directly.
 
-app/data/muscle-groups.ts  ← static seed data: 11 muscle groups, 134 exercises (id, name, muscleGroupId,
+app/data/muscle-groups.ts  ← static seed data: 11 muscle groups, 135 exercises (id, name, muscleGroupId,
                               equipment, trackingType). `name` here is an English dev fallback only — never
                               rendered directly, see i18n below. `equipment` is optional and occasionally
                               omitted on purpose (e.g. `front-raise-plate` — a plate isn't one of the existing
@@ -85,11 +117,13 @@ app/utils/date.ts          ← formatDate/parseDate ('YYYY-MM-DD' string <-> Dat
 app/utils/format.ts        ← isBodyweight(weight) — the "kg"/"BW" text itself comes from translations, not from this util
 app/utils/pluralize.ts     ← pluralize(count, {one, few, many}) — Russian has 3 plural forms, not 2; see i18n below
 
-app/stores/workout.ts      ← THE store. workouts: Workout[] persisted via useStorage('lift-tracker-workouts').
+app/stores/workout.ts      ← THE store. workouts: Workout[] persisted via useIdbStorage('lift-tracker-workouts').
                               One Workout per date (getOrCreateWorkoutByDate enforces this). CRUD: addExercise
                               (always creates a new WorkoutExercise, even if that exerciseId is already logged
                               that day — intentional, e.g. same exercise at the start and end of a session),
-                              removeExercise, reorderExercises(date, orderedIds) (persists drag-and-drop order,
+                              removeExercise (also clears supersetId from a superset's last remaining member),
+                              linkWithNext(date, id) / unlinkSuperset(date, id) (supersets — see the note
+                              below), reorderExercises(date, orderedIds) (persists drag-and-drop order,
                               re-syncs WorkoutExercise.order to match), addSet(date, workoutExerciseId, values),
                               updateSet(date, workoutExerciseId, setId, values) — values is a partial
                               {weight?, reps?, durationSeconds?, distanceKm?, dumbbellCount?}, not positional
@@ -99,12 +133,22 @@ app/stores/workout.ts      ← THE store. workouts: Workout[] persisted via useS
                               for that exerciseId, not just the first match — matters now that duplicates
                               exist; treats missing weight/reps as 0 rather than assuming every set has them)
                               and getPersonalRecord(exerciseId) — used for the PR badge and the "last session"
-                              hint in the add-set popup. replaceWorkout(workout) — upsert-by-id, LWW-guarded by
-                              updatedAt; syncApi.ts's only mutation entry point into this store, see below.
+                              hint in the add-set popup. replaceWorkout(workout) — upsert matched by id, then by
+                              date (one Workout per date is an invariant on both ends — the backend has UNIQUE
+                              (user_id, date) and resolves a same-date/different-id conflict by LWW, dropping
+                              the older one; this mirrors it), LWW-guarded by updatedAt; syncApi.ts's only
+                              mutation entry point into this store, see below.
+                              **An emptied day keeps its Workout record** (`exercises: []`) — removeExercise
+                              never deletes the Workout. Deletion isn't synced, so deleting it left the old id
+                              on the server, and re-adding an exercise that day minted a second Workout (new id,
+                              same date) whose push 500'd on the backend's UNIQUE (user_id, date). Keeping the
+                              record keeps one stable id per day, and pushing the empty version clears the day
+                              on other devices. Hence `nonEmptyWorkouts` (computed): history.vue and
+                              `workoutDates` (calendar dots) read it instead of `workouts`.
 app/stores/ui.ts           ← UI-only state, not persisted: selectedDate (drives which day is shown on Workout page),
                               addSetSheet (add/edit-set popup state — the name is historical, it's rendered
                               as a centered popup now, not a bottom sheet), exercisePicker (show flag),
-                              authModal ({show, initialMode: 'register'|'login'} — GuestAuthModal.vue is a
+                              authModal ({show, initialMode: 'register'|'login'} — GuestAuthModal (guest/AuthModal.vue) is a
                               global popup like WorkoutExercisePicker/WorkoutAddSetSheet, not a locally-`ref`'d
                               one like TheSidebar itself, because it now has 3 independent openers:
                               GuestLimitGate's banner, TheSidebar's login menu item, GuestRemainingNudge's
@@ -114,7 +158,7 @@ app/stores/ui.ts           ← UI-only state, not persisted: selectedDate (drive
                               module-scope `setTimeout` handle (`guestNudgeTimeout`, same "runtime handle, not
                               a ref" category as `timerInterval` below) that auto-hides it after 4.5s — only
                               caller is AddSetSheet.vue#confirm(), at the milestones in
-                              `GUEST_NUDGE_MILESTONES`, see guest.ts above),
+                              `GUEST_NUDGE_MILESTONES`, see guest.ts below),
                               restTimer ({active, remaining, total}, countdown driven by a module-scope
                               setInterval shared across the store singleton's lifetime — not persisted, resets
                               on page reload). startRestTimer(seconds)/stopRestTimer() (unconditional start/stop),
@@ -140,7 +184,7 @@ app/stores/settings.ts     ← persisted user preferences: primaryColor, restTim
                               state) — the 7 selectable accent-color options, `{value, labelKey}[]` — and
                               restTimerSounds (same pattern): a plain `{id, labelKey}[]` catalog, `id` doubles
                               as the mp3 basename under `public/sounds/` so no separate `file` field is needed.
-app/stores/catalog.ts      ← user-created catalog additions, persisted separately from the static seed data:
+app/stores/catalog.ts      ← user-created catalog additions, persisted (IndexedDB, useIdbStorage — all 5 keys below) separately from the static seed data:
                               customMuscleGroups ('lift-tracker-custom-muscle-groups'), customExercises
                               ('lift-tracker-custom-exercises'). addMuscleGroup(name) pushes (new custom groups
                               sort after the built-in ones); addExercise(name, muscleGroupId, equipment,
@@ -165,8 +209,8 @@ app/stores/catalog.ts      ← user-created catalog additions, persisted separat
                               version). All three exist solely for syncApi.ts, see below — not meant for any
                               other caller.
 app/stores/guest.ts        ← guestWorkoutCount ('lift-tracker-guest-workout-count'), the free-tier counter
-                              backing the registration gate (docs/02-mvp.md, v1.3; UI: GuestLimitGate.vue
-                              below). Monotonic — only incrementWorkoutCount() (++) exists, no decrement, so
+                              backing the registration gate (docs/02-mvp.md, v1.3; UI: GuestLimitGate —
+                              guest/LimitGate.vue, see the component tree below). Monotonic — only incrementWorkoutCount() (++) exists, no decrement, so
                               deleting/recreating a workout can't be used to dodge the limit. Deliberately NOT
                               counted by raw Workout/localStorage record count (a day gets a Workout row just
                               by being opened, via getOrCreateWorkoutByDate, even with zero sets logged) —
@@ -200,7 +244,7 @@ app/stores/auth.ts         ← userEmail ('lift-tracker-user-email'), userId ('l
                               — its wire `id` is the user's own id (one row per user server-side), not a
                               client-minted UUID like every other synced entity, see syncApi.ts below.
                               setSession()/clearSession() are the only mutations — pure state, no HTTP calls
-                              (same "keep the domain out of unrelated concerns" reasoning as guest.ts below);
+                              (same "keep the domain out of unrelated concerns" reasoning as guest.ts above);
                               the actual `/auth/*` requests live in app/utils/authApi.ts instead
                               (registerUser/loginUser/logoutUser), which is also where GuestAuthModal's
                               submit() and TheSidebar's logout button call into — a plain utils module rather
@@ -271,6 +315,17 @@ app/utils/syncApi.ts       ← the client half of the flow in lift-tracker-backe
                               two-way mapper (toWireMuscleGroup/toWireExercise dropping `isCustom` — the
                               backend only ever deals in custom entries, defaulting missing isDeleted/
                               updatedAt; fromWireMuscleGroup/fromWireExercise adding `isCustom: true` back).
+                              Exercise photos: `mediaId` travels in the exercise's wire form; the image itself
+                              is uploaded by uploadMedia() (`PUT /media/:id`, multipart field `file` — apiFetch
+                              accepts FormData + PUT for this) for every changed exercise *before* the push, so
+                              another device never pulls a mediaId the server can't serve. No separate upload
+                              queue: adding/replacing a photo bumps the exercise's updatedAt, so it's in the
+                              changed set exactly when its photo is new (PUT is idempotent, a re-upload on a
+                              later rename is harmless). Network/5xx → the whole sync aborts and retries on the
+                              next trigger (pushing anyway would advance lastSyncedAt past it and the photo
+                              would never upload); 4xx → skipped, a retry can't fix it. A missing `mediaId` in
+                              pulled data means "no photo" (removed on another device) — replaceExercise()
+                              applies it as-is. Old images are never deleted server-side yet.
                               applyRejected() resolves a flat, mixed-domain id (see API.md's "accepted/
                               rejected — общий пул id из всех доменов разом") back to the right local
                               collection by checking authStore.userId first (→ catalogOrder), then searching
@@ -294,8 +349,9 @@ app/utils/syncApi.ts       ← the client half of the flow in lift-tracker-backe
                               on the server — it *looks* like the server got wiped (push never sends
                               destructive "replace everything" semantics, so it can't actually do that), but
                               what really happened is pull silently deciding there's nothing new to ask for.
-                              Workouts have no deletion sync at all yet (see the note below), so "genuinely 0
-                              workouts after having synced before" can't happen through normal use — this
+                              Workout records are never deleted (an emptied day keeps an `exercises: []`
+                              record, see workout.ts above), so "genuinely 0 workouts after having synced
+                              before" can't happen through normal use — this
                               heuristic has no real false-positive cost.
 ```
 
@@ -322,7 +378,7 @@ app/layouts/default.vue           ← van-config-provider(dark) + TheHeader + <s
                                         opening `GuestAuthModal` in login mode; authenticated → a static row
                                         instead (truncated email start-aligned via `text-overflow: ellipsis`
                                         + `min-width: 0` on a `flex:1` span, "Выйти" button end-aligned calling
-                                        `authStore.logout()`) — not a menu item, doesn't navigate anywhere
+                                        `authApi.ts#logoutUser()`) — not a menu item, doesn't navigate anywhere
   app/components/the/TheRestTimerSettingsModal.vue ← centered van-popup, mounted inside TheSidebar.vue with
                                         a local `ref`-based show state (same reasoning as TheSidebar itself —
                                         nothing else opens it): 3-way mode selector + conditional duration
@@ -371,15 +427,32 @@ app/layouts/default.vue           ← van-config-provider(dark) + TheHeader + <s
   app/pages/index.vue ("/")          ← Workout page for ui.selectedDate; swipe left/right (useSwipe) moves
                                         ui.selectedDate ±1 day, with a direction-aware Transition (slide+fade)
                                         keyed on the date so the animation direction matches the swipe.
-                                        Exercise cards are drag-reorderable (useSortable, whole card is the
+                                        Exercise *blocks* are drag-reorderable (useSortable, whole block is the
                                         drag target, delayOnTouchOnly so a quick tap still reaches buttons/sets
-                                        underneath) — see the reactivity gotcha below before touching this.
+                                        underneath) — a block is a single card or a whole superset, see the
+                                        superset note and the reactivity gotcha below before touching this.
     WorkoutRestTimer                    ← rest banner; visibility depends on settings.restTimerMode — 'off':
                                              never shown, 'auto': shown only while ui.restTimer.active (same as
                                              before), 'custom': always shown (a permanent plaque with its own
                                              play/pause/reset controls instead of the tap-anywhere-to-dismiss
                                              behavior the other two modes use)
-    WorkoutExerciseCard (per exercise)  ← sets table, PR badge, add/edit/delete set, delete exercise
+    WorkoutExerciseCard (per exercise)  ← sets table, PR badge, add/edit/delete set; "⋯" van-popover menu
+                                             (superset with next / break superset / delete — `overlay` with a
+                                             transparent overlay-style, because Vant's Popover closes on outside
+                                             clicks only via `touchstart`, so without it a desktop mouse click
+                                             never closes the menu); 44×44
+                                             WorkoutExerciseMedia thumbnail left of the title when
+                                             `exercise.mediaUrl` is set (no drag-handle icon — the whole card is
+                                             the drag target). WorkoutExerciseMedia (workout/ExerciseMedia.vue) is
+                                             the shared thumbnail tile, also used in ExercisePicker's exercise
+                                             rows — takes the whole `exercise` and is the one place that resolves
+                                             an image: built-in `mediaUrl` (static
+                                             `public/exercise-media/<exercise-id>.webp`, animated, white
+                                             background → contained on a white tile) or custom `mediaId` (user
+                                             photo from mediaStorage.ts → object URL, `object-fit: cover`). Two
+                                             fields, not one, because `mediaUrl` is a ready-to-use src while
+                                             `mediaId` is a key needing an async lookup — never put either into
+                                             an <img> yourself, use this component / `hasExerciseMedia()`.
     WorkoutEmptyState                   ← shown when the selected day has no exercises yet
 
   app/pages/history.vue ("/history") ← all workouts, sorted newest-first
@@ -405,9 +478,11 @@ Global popups (`WorkoutExercisePicker`, `WorkoutAddSetSheet`, `GuestAuthModal`) 
 
 **Custom (user-created) exercises/groups have no translation key — never call `t(\`catalog.exercises.${id}\`)` / `t(\`catalog.muscleGroups.${id}\`)` directly.** Built-in catalog names are translated; a custom one is just whatever the user typed, verbatim, regardless of active locale (there's no correct translation to fall back to). Always go through `exerciseName(exercise, t)` / `muscleGroupName(group, t)` from `app/utils/exercises.ts`, which branch on `isCustom` and return the raw `name` field for custom entries. This is also why `Exercise.name`/`MuscleGroup.name` stopped being "English dev fallback only, never rendered" for custom entries specifically — for those it's the *only* rendered name.
 
+**Built-in exercise names never repeat the equipment, and never use parentheses — equipment is always rendered next to the name as "name · equipment".** Three bench-press variants are all translated as plain "Жим лёжа"/"Bench Press"; `ExerciseCard.vue` (title line, equipment in regular weight), `ExercisePicker.vue` (cell `#title` slot) and `AddSetSheet.vue` (header) each render `exerciseName()` + `<span class="dot">·</span>` + `equipmentLabel()` (`app/utils/exercises.ts`, `''` when there's no equipment tag). Anything else in the name is written into it as words, not a parenthetical ("Сведение рук снизу вверх", not "Сведение рук в кроссовере (нижние блоки)"). An exercise with no equipment tag (cardio machines, `front-raise-plate`) keeps whatever it needs in the name itself. When adding a catalog entry, follow the same rule in both locales, and anywhere new that shows an exercise name must show the equipment suffix too — otherwise identical names become indistinguishable.
+
 **Deleting a custom exercise/group is a soft-delete (`isDeleted: true`), never a real array removal — built-in (non-custom) entries can't be edited or deleted at all, by design.** Workouts reference exercises by id only; hard-deleting a custom entry a user logged sets ago would silently break every past `ExerciseCard`/history render for it (`getExerciseById` would return `undefined`). `getAllMuscleGroups`/`getExercisesByMuscleGroup` (picker-facing) filter out `isDeleted` entries; `getExerciseById`/`getMuscleGroupById` (used to resolve an *existing* reference) deliberately don't, so old workouts keep resolving and rendering forever. Editing (rename/change equipment/trackingType) is a plain in-place mutation, not soft-anything — a correction is *meant* to retroactively show up in past history too. In `ExercisePicker.vue`, both are reached by swiping a custom cell (`van-swipe-cell`, `:disabled="!entry.isCustom"` so built-in cells don't swipe at all) to reveal Edit/Delete buttons.
 
-**Drag-and-drop reordering in `ExercisePicker.vue` (both the muscle-group list and the exercise-list-within-a-group) covers built-in AND custom entries together — unlike edit/delete, which is custom-only.** Reordering doesn't mutate the entries themselves, just their display position, so there's no reason to lock built-in ones out of it (a user might reasonably want "Ноги" before "Грудь", or a frequently-used exercise dragged to the top). The catch: built-in entries live in the unpersisted static `app/data/muscle-groups.ts` module, so there's nowhere on the `Exercise`/`MuscleGroup` objects themselves to durably store a custom position for them. Order is instead tracked out-of-band in `catalogStore.groupOrder` / `exerciseOrder` — plain arrays of ids, applied on top of the natural (catalog + custom) list via `app/utils/exercises.ts#applyOrder()`. Anything not yet in the stored order (new, or never reordered) is appended at the end in natural order rather than disappearing. Same drag mechanics as everywhere else (press-and-hold via `useSortable`, `watchElement: true` since both lists sit behind `v-if`/`v-else` and get destroyed/recreated on navigation, local working-copy ref with the id-set-comparison guard to avoid ping-ponging with the persist watcher) — this coexists with each cell's `van-swipe-cell` (edit/delete) without conflict, verified via Playwright.
+**Drag-and-drop reordering in `ExercisePicker.vue` (both the muscle-group list and the exercise-list-within-a-group) covers built-in AND custom entries together — unlike edit/delete, which is custom-only.** Reordering doesn't mutate the entries themselves, just their display position, so there's no reason to lock built-in ones out of it (a user might reasonably want "Ноги" before "Грудь", or a frequently-used exercise dragged to the top). The catch: built-in entries live in the unpersisted static `app/data/muscle-groups.ts` module, so there's nowhere on the `Exercise`/`MuscleGroup` objects themselves to durably store a custom position for them. Order is instead tracked out-of-band in `catalogStore.groupOrder` / `exerciseOrder` — plain arrays of ids, applied on top of the natural (catalog + custom) list via `app/utils/exercises.ts#applyOrder()`. Anything not yet in the stored order (new, or never reordered) is appended at the end in natural order rather than disappearing — except custom *exercises*: `getExercisesByMuscleGroup()` puts custom exercises missing from the stored order on top, since the picker persists an order as soon as a group is opened and a freshly created exercise would otherwise land at the very bottom (the picker then persists the new order, so it stays on top). Same drag mechanics as everywhere else (press-and-hold via `useSortable`, `watchElement: true` since both lists sit behind `v-if`/`v-else` and get destroyed/recreated on navigation, local working-copy ref with the id-set-comparison guard to avoid ping-ponging with the persist watcher) — this coexists with each cell's `van-swipe-cell` (edit/delete) without conflict, verified via Playwright.
 
 **There is no per-exercise history view.** It existed briefly (tap the exercise card's title on the Workout page) but was removed — it wasn't discoverable (the click target wasn't obvious as interactive) and it also fought with drag-reorder: long-pressing text to start a drag would trigger the browser's native text-selection instead. The `/history` tab covers this need at the day level. Don't reintroduce a click handler on `.exercise-card__name`/`ExerciseCard.vue`'s title without solving both problems again.
 
@@ -439,7 +514,9 @@ Settings live in `TheRestTimerSettingsModal.vue`, opened from a menu item in `Th
 
 The UI only cares about the multiplier at the moment of logging: `AddSetSheet.vue`'s `isDumbbell` computed (`exercise.equipment === 'dumbbell'`) gates a ×1/×2 toggle, defaulting to **×2** (most bilateral dumbbell movements) via `AddSetSheetState.defaultDumbbellCount`, which `index.vue`'s `openAddSet`/`openEditSet` populate from `lastSet?.dumbbellCount ?? 2` / `set.dumbbellCount ?? 2` — same "prefill from whatever was just logged for this exercise" pattern `defaultWeight`/`defaultReps` already use, so switching to ×1 mid-session (fatigue, unilateral variation, only one dumbbell available) naturally carries forward to the next set instead of resetting. Because the count lives per-`SetEntry` rather than per-exercise or per-day, a session that mixes ×1 and ×2 sets needs no special aggregation logic anywhere — every sum/max already iterates individual sets, so each one just contributes its own true value.
 
-**A computed that only reads a property (not `.length`/an iteration) on a nested reactive array won't react to `.push()`/`.splice()` on it.** `workoutStore.getWorkoutByDate(date)?.exercises` is a plain property read — Vue tracks "did `.exercises` get reassigned", not "did its contents change". `index.vue`'s `storedExercises` computed spreads it (`[...workout.exercises]`) specifically to force the iteration that makes push/splice mutations (e.g. `addExercise`) actually invalidate it. This bit only in a scenario with an intermediate `ref` feeding `useSortable` (see below) — a bare `v-for="we in exercises"` directly over a computed doesn't need this, because `v-for`'s own iteration during render establishes the same tracking implicitly.
+**A computed that only reads a property (not `.length`/an iteration) on a nested reactive array won't react to `.push()`/`.splice()` on it.** `workoutStore.getWorkoutByDate(date)?.exercises` is a plain property read — Vue tracks "did `.exercises` get reassigned", not "did its contents change". `index.vue`'s `storedExercises` computed spreads it (`[...workout.exercises]`) specifically to force the iteration that makes push/splice mutations (e.g. `addExercise`) actually invalidate it. This bit only in a scenario with an intermediate `ref` feeding `useSortable` (see below) — a bare `v-for="we in exercises"` directly over a computed doesn't need this, because `v-for`'s own iteration during render establishes the same tracking implicitly. The same trap applies one level deeper: the spread tracks the array, not each element's fields — which is why `index.vue` computes its `structureKey()` (ids + `supersetId`s) *inside* the watch getter rather than watching `storedExercises` and comparing in the callback; otherwise linking/unlinking a superset (an in-place `supersetId` write on an element) never rebuilds the blocks.
+
+**Supersets: `WorkoutExercise.supersetId` — a shared UUID label on 2+ exercises, not a reference to anything.** Invariant: members are always contiguous in `Workout.exercises`. `workoutStore.linkWithNext()` adds the exercise right below the *whole* superset (so "superset with next" from any member appends the next exercise at the end of the group; linking into another superset merges them), `unlinkSuperset()` dissolves the whole group (pulling out a middle member would split it), and `removeExercise()` clears the tag from a group's last remaining member. `index.vue` renders and drags **blocks** (`toBlocks()`: a single exercise, or a superset's consecutive members) so a superset always moves as one unit and a drag can never break contiguity; reordering *within* a superset isn't supported. Synced as-is: `supersetId` is part of the backend's workout-exercise contract (nullable `superset_id uuid` column) — the backend's `ValidationPipe({ whitelist: true })` silently strips unknown fields, so any new `WorkoutExercise`/`SetEntry` field must land in the backend DTO first, or it's lost on the next pull. Not done yet: the rest timer still auto-starts after every logged set, even mid-superset.
 
 **`useSortable`'s target element gets destroyed/recreated on every date swipe** (`.workout-page__list` sits inside a `:key="currentDate"` Transition). Pass `watchElement: true` or the Sortable instance keeps pointing at a detached node after the first swipe and dragging silently stops working. Persisting the reorder goes through an explicit `workoutStore.reorderExercises()` call in a `watch`, not by letting `useSortable` own the store's array directly — same "mutations go through named store actions" rule as everywhere else in this app.
 
@@ -453,7 +530,7 @@ English + Russian via `@nuxtjs/i18n`. This is a permanent architecture decision,
 - **Pluralization is hand-rolled, not vue-i18n's built-in plural syntax.** Russian has 3 plural forms (1 / 2-4 / 5+), not the 2 vue-i18n's default English-style plural rule assumes. Pattern: locale files have `xWordOne`/`xWordFew`/`xWordMany` string keys, `app/utils/pluralize.ts#pluralize(count, {one, few, many})` picks the right one, then interpolate into `units.countWord` (`"{count} {word}"`). See `app/pages/index.vue`'s `summaryText` for the canonical example.
 - **Don't use `tm()` for plain string arrays** — in this Nuxt/vue-i18n setup `tm()` returns compiled message AST nodes, not evaluated strings (you'd need `rt()` to render them). That's why plural forms are separate string keys resolved via plain `t()`, not a `tm()`-fetched array — simpler and avoids that footgun entirely.
 - **`useI18n()` cannot be called inside a `defineNuxtPlugin()` callback in this setup.** Global i18n-dependent logic (e.g. the Vant locale sync) belongs in `app/app.vue`'s `<script setup>` instead, which has a guaranteed valid Vue composition context.
-- Catalog display names are never read from `app/data/muscle-groups.ts#name` — always resolve via `t(\`catalog.exercises.${id}\`)` / `t(\`catalog.muscleGroups.${id}\`)`. The `name` field there is an English fallback for dev/debug convenience only.
+- Catalog display names are never read directly from `app/data/muscle-groups.ts#name` (that field is an English fallback for dev/debug convenience only) — always resolve via `exerciseName(exercise, t)` / `muscleGroupName(group, t)` from `app/utils/exercises.ts`, which translate built-in entries via `catalog.exercises.<id>` / `catalog.muscleGroups.<id>` and return the raw `name` for custom ones. Don't call those `t()` keys directly — see the custom-entries note above.
 - **A literal `|` inside a message string is vue-i18n's plural-form separator, even via plain `t()` with no explicit plural syntax intended.** If the params include a `count` key, vue-i18n uses it to pick which side of the `|` to render — silently mangling any string where `|` was meant as a literal visual separator (e.g. an attempted `"Добавить | {count}"` key rendered as just `"Добавить"` or just the bare count depending on its value). Build that kind of "label | number" string by concatenating in the template/script instead of putting `|` in the locale JSON.
 
 ## MVP scope

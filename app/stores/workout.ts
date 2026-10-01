@@ -1,8 +1,8 @@
 import { computed } from 'vue';
 import { defineStore } from 'pinia';
-import { useStorage } from '@vueuse/core';
 import type { Workout, WorkoutExercise, SetEntry } from '~~/types';
 import { generateId } from '@/utils/id';
+import { useIdbStorage } from '@/utils/idbStorage';
 
 export interface ExerciseHistoryEntry {
   workoutId: string;
@@ -14,7 +14,12 @@ export interface ExerciseHistoryEntry {
 }
 
 export const useWorkoutStore = defineStore('workout', () => {
-  const workouts = useStorage<Workout[]>('lift-tracker-workouts', []);
+  // IndexedDB, not localStorage — this is the collection that grows without bound (years
+  // of history). Loaded before the app mounts, see app/plugins/idb-load.client.ts.
+  const { state: workouts, load } = useIdbStorage<Workout[]>(
+    'lift-tracker-workouts',
+    [],
+  );
 
   function getWorkoutByDate(date: string): Workout | undefined {
     return workouts.value.find((workout) => workout.date === date);
@@ -61,14 +66,80 @@ export const useWorkoutStore = defineStore('workout', () => {
     const index = workout.exercises.findIndex(
       (exercise) => exercise.id === workoutExerciseId,
     );
-    if (index !== -1) workout.exercises.splice(index, 1);
+    if (index === -1) return;
+    const [removed] = workout.exercises.splice(index, 1);
 
-    if (workout.exercises.length === 0) {
-      const workoutIndex = workouts.value.findIndex((w) => w.id === workout.id);
-      if (workoutIndex !== -1) workouts.value.splice(workoutIndex, 1);
-      return;
+    // An emptied day deliberately keeps its Workout record (exercises: []) instead of
+    // being deleted: deletion isn't synced, so a deleted day would stay on the server,
+    // and the next exercise added that day would create a *second* Workout (new id, same
+    // date) — rejected by the backend's UNIQUE (user_id, date). Keeping it means the day
+    // keeps one stable id, and the push of the empty version clears the day on other
+    // devices too. Empty workouts are filtered out of history and calendar dots.
+
+    // A superset left with a single member isn't a superset anymore.
+    const supersetId = removed?.supersetId;
+    if (supersetId) {
+      const remaining = workout.exercises.filter(
+        (e) => e.supersetId === supersetId,
+      );
+      if (remaining.length === 1) delete remaining[0]!.supersetId;
     }
 
+    touch(workout);
+  }
+
+  // Index range [start, end] of the contiguous run of exercises sharing the superset of
+  // the exercise at `index` — just [index, index] when it isn't in a superset.
+  function supersetRange(
+    exercises: WorkoutExercise[],
+    index: number,
+  ): [number, number] {
+    const supersetId = exercises[index]?.supersetId;
+    if (!supersetId) return [index, index];
+    let start = index;
+    let end = index;
+    while (exercises[start - 1]?.supersetId === supersetId) start--;
+    while (exercises[end + 1]?.supersetId === supersetId) end++;
+    return [start, end];
+  }
+
+  // Adds the exercise right below the whole superset (not just below this one) to it —
+  // so linking from any member always appends the next exercise at the end of the group.
+  // Creates the superset if this exercise isn't in one yet; if the next exercise is
+  // already in another superset, the two merge into one.
+  function linkWithNext(date: string, workoutExerciseId: string): void {
+    const workout = getWorkoutByDate(date);
+    if (!workout) return;
+    const index = workout.exercises.findIndex(
+      (e) => e.id === workoutExerciseId,
+    );
+    if (index === -1) return;
+
+    const [start, end] = supersetRange(workout.exercises, index);
+    const next = workout.exercises[end + 1];
+    if (!next) return;
+    const [, nextEnd] = supersetRange(workout.exercises, end + 1);
+
+    const supersetId = workout.exercises[index]!.supersetId ?? generateId();
+    for (let i = start; i <= nextEnd; i++) {
+      workout.exercises[i]!.supersetId = supersetId;
+    }
+    touch(workout);
+  }
+
+  // Dissolves the whole superset, not just this one exercise — pulling a middle member
+  // out would split the group in two.
+  function unlinkSuperset(date: string, workoutExerciseId: string): void {
+    const workout = getWorkoutByDate(date);
+    if (!workout) return;
+    const supersetId = workout.exercises.find(
+      (e) => e.id === workoutExerciseId,
+    )?.supersetId;
+    if (!supersetId) return;
+
+    workout.exercises.forEach((e) => {
+      if (e.supersetId === supersetId) delete e.supersetId;
+    });
     touch(workout);
   }
 
@@ -146,12 +217,17 @@ export const useWorkoutStore = defineStore('workout', () => {
     }
   }
 
-  // Upsert by id, LWW-guarded by updatedAt — used by syncApi.ts to apply both a push's
-  // `rejected[].current` (server's authoritative version) and a pull's incoming workouts.
-  // Not exposed to components; sync is the only caller, same as guest/auth domains staying
-  // out of this store's own mutation surface.
+  // Upsert from sync (push rejections and pulls), LWW by updatedAt. Matches by id first,
+  // then by date: one Workout per date is an invariant on both ends (the backend has
+  // UNIQUE (user_id, date)), but two devices — or an old deleted-then-recreated day —
+  // can hold *different* ids for the same date. The backend resolves that by keeping the
+  // newer one and dropping the other; this mirrors it locally, so a device never ends
+  // up with two workouts on one day after a pull.
   function replaceWorkout(incoming: Workout): void {
-    const index = workouts.value.findIndex((w) => w.id === incoming.id);
+    let index = workouts.value.findIndex((w) => w.id === incoming.id);
+    if (index === -1) {
+      index = workouts.value.findIndex((w) => w.date === incoming.date);
+    }
     const existing = index === -1 ? undefined : workouts.value[index];
     if (!existing) {
       workouts.value.push(incoming);
@@ -162,7 +238,13 @@ export const useWorkoutStore = defineStore('workout', () => {
     }
   }
 
-  const workoutDates = computed(() => workouts.value.map((w) => w.date));
+  // Emptied days keep their Workout record (see removeExercise), so anything showing
+  // "days that have a workout" must skip empty ones.
+  const nonEmptyWorkouts = computed(() =>
+    workouts.value.filter((w) => w.exercises.length > 0),
+  );
+
+  const workoutDates = computed(() => nonEmptyWorkouts.value.map((w) => w.date));
 
   function getExerciseHistory(exerciseId: string): ExerciseHistoryEntry[] {
     return workouts.value
@@ -219,15 +301,19 @@ export const useWorkoutStore = defineStore('workout', () => {
 
   return {
     workouts,
+    load,
     getWorkoutByDate,
     getOrCreateWorkoutByDate,
     addExercise,
     removeExercise,
+    linkWithNext,
+    unlinkSuperset,
     reorderExercises,
     addSet,
     updateSet,
     removeSet,
     replaceWorkout,
+    nonEmptyWorkouts,
     workoutDates,
     getExerciseHistory,
     getPersonalRecord,
