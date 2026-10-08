@@ -35,8 +35,6 @@ export const useUiStore = defineStore('ui', () => {
     total: 90,
   });
 
-  // Transient "you have N free workouts left" toast — see AddSetSheet.vue#confirm(),
-  // the only place that shows it, at fixed remaining-count milestones.
   const guestNudge = ref<{ show: boolean; remaining: number }>({
     show: false,
     remaining: 0,
